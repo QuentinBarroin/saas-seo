@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { FolderSearch, Clock } from 'lucide-react';
 import { NvButton, NvCard, NvEmptyState, NvPageHeader } from '@/components/nv';
 import { FindingsList } from './findings-list';
+import { AuditDetails } from './audit-details';
 import { getDisplayFindings } from '@/lib/audits/get-display-findings';
 import { db } from '@/lib/db';
 import type { Severity } from '@/lib/scoring/rules';
@@ -150,6 +151,8 @@ export default async function AuditTechniquePage({ searchParams }: PageProps) {
       </div>
 
       <FindingsList findings={audit.findings} />
+
+      <AuditDetails audit={audit} />
     </div>
   );
 }

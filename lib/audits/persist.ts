@@ -151,7 +151,9 @@ export async function getLatestAudit(projectId: string) {
     orderBy: { finishedAt: 'desc' },
     select: {
       id: true,
+      startedAt: true,
       finishedAt: true,
+      runLog: true,
       globalScore: true,
       technicalScore: true,
       contentScore: true,

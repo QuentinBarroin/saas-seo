@@ -1,9 +1,11 @@
 import type { FindingDraft } from '@/lib/scoring/finding';
 import type { RuleCategory, Severity } from '@/lib/scoring/rules';
+import type { AuditLogEntry } from './persist';
 import { getLatestAudit } from './persist';
 
 export type AuditDisplay = {
   auditId: string;
+  startedAt: Date | null;
   finishedAt: Date | null;
   global: number | null;
   perCategory: {
@@ -13,6 +15,7 @@ export type AuditDisplay = {
     conversion: number | null;
     geo: number | null;
   };
+  runLog: AuditLogEntry[];
   findings: FindingDraft[];
 };
 
@@ -70,6 +73,22 @@ function parseConfidence(value: unknown): FindingDraft['confidence'] {
   return 'certain';
 }
 
+/** Parse défensif d'un runLog DB → array typé. Tolère le JSON cassé / non-array. */
+export function parseRunLog(raw: unknown): AuditLogEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isAuditLogEntry);
+}
+
+function isAuditLogEntry(value: unknown): value is AuditLogEntry {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.phase === 'string' &&
+    typeof v.at === 'string' &&
+    typeof v.ok === 'boolean'
+  );
+}
+
 /** Adapter DB Finding → FindingDraft (consommé par FindingsList). */
 export async function getDisplayFindings(projectId: string): Promise<AuditDisplay | null> {
   const audit = await getLatestAudit(projectId);
@@ -77,6 +96,7 @@ export async function getDisplayFindings(projectId: string): Promise<AuditDispla
 
   return {
     auditId: audit.id,
+    startedAt: audit.startedAt,
     finishedAt: audit.finishedAt,
     global: audit.globalScore,
     perCategory: {
@@ -86,6 +106,7 @@ export async function getDisplayFindings(projectId: string): Promise<AuditDispla
       conversion: audit.conversionScore,
       geo: audit.geoScore,
     },
+    runLog: parseRunLog(audit.runLog),
     findings: audit.findings.map(mapDbFindingToDraft),
   };
 }
