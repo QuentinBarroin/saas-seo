@@ -55,9 +55,17 @@ export type CrawledPage = {
   error?: string;
 };
 
+export type SiteFileProbe = {
+  url: string;
+  /** null si non probé. */
+  status: number | null;
+};
+
 export type CrawlResult = {
   pages: CrawledPage[];
   startedAt: Date;
   finishedAt: Date;
   skippedByRobots: string[];
+  sitemap: SiteFileProbe;
+  robots: SiteFileProbe;
 };

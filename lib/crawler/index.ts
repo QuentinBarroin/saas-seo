@@ -2,7 +2,7 @@ import { defaultRobotsLoader, undiciFetcher } from './fetch';
 import { parseHtml } from './parse';
 import { loadRobots } from './robots';
 import { classifyUrl, normalizeUrl } from './safety';
-import type { CrawlOptions, CrawlResult, CrawledPage, Fetcher } from './types';
+import type { CrawlOptions, CrawlResult, CrawledPage, Fetcher, SiteFileProbe } from './types';
 
 const DEFAULT_USER_AGENT = 'SeoAuditBot/0.1 (+contact@novera)';
 const DEFAULT_MAX_DEPTH = 3;
@@ -25,12 +25,18 @@ export async function crawl(opts: CrawlOptions): Promise<CrawlResult> {
       startedAt,
       finishedAt: new Date(),
       skippedByRobots: [],
+      sitemap: { url: '', status: null },
+      robots: { url: '', status: null },
     };
   }
   const seedUrl = seedVerdict.url;
+  const origin = seedUrl.origin;
+
+  const sitemap = await probeSiteFile(origin, '/sitemap.xml', fetcher, userAgent);
+  const robotsProbe = await probeSiteFile(origin, '/robots.txt', fetcher, userAgent);
 
   const robots = respectRobots
-    ? await loadRobots(seedUrl.origin, userAgent, opts.robotsLoader ?? defaultRobotsLoader)
+    ? await loadRobots(origin, userAgent, opts.robotsLoader ?? defaultRobotsLoader)
     : null;
 
   const pages: CrawledPage[] = [];
@@ -72,7 +78,29 @@ export async function crawl(opts: CrawlOptions): Promise<CrawlResult> {
     }
   }
 
-  return { pages, startedAt, finishedAt: new Date(), skippedByRobots };
+  return {
+    pages,
+    startedAt,
+    finishedAt: new Date(),
+    skippedByRobots,
+    sitemap,
+    robots: robotsProbe,
+  };
+}
+
+async function probeSiteFile(
+  origin: string,
+  path: string,
+  fetcher: Fetcher,
+  userAgent: string
+): Promise<SiteFileProbe> {
+  const url = new URL(path, origin).toString();
+  try {
+    const res = await fetcher(url, { headers: { 'user-agent': userAgent } });
+    return { url, status: res.status };
+  } catch {
+    return { url, status: null };
+  }
 }
 
 async function fetchOne(url: string, fetcher: Fetcher, userAgent: string): Promise<CrawledPage> {
@@ -122,4 +150,4 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export type { CrawlOptions, CrawlResult, CrawledPage } from './types';
+export type { CrawlOptions, CrawlResult, CrawledPage, SiteFileProbe } from './types';
