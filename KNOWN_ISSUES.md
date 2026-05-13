@@ -12,7 +12,6 @@ Légende :
 |---|---|---|---|
 | ❓ | URL de production non encore décidée | Sprint 0 | base Obsidian `06_questions/decisions-a-demander-a-quentin.md#Q-012` |
 | ❓ | Anthropic SDK : version exacte du modèle Sonnet 4.6 à confirmer | scaffold | `lib/ai/claude.ts` utilise `claude-sonnet-4-5` en placeholder |
-| 🟡 | Catalogue de règles SEO vide (`lib/scoring/rules.ts`) | scaffold | tâche S1-01 |
 | 🟡 | Pas de tests E2E (Playwright) en MVP — décision actée | décision | base Obsidian `02_decisions/decisions-produit.md#PDR-...` |
 | ❓ | Dépendance NPM `@anthropic-ai/sdk@0.40.0` : vérifier dernière version au moment de l'install | scaffold | `package.json` |
 
@@ -21,6 +20,7 @@ Légende :
 | Date | Sévérité | Titre | Résolution |
 |---|---|---|---|
 | 2026-05-13 | 🟡 | Auth Supabase non encore wirée + middleware protection `app/(app)/*` | S0-04 : Server Actions signIn/signOut + middleware racine + cookies HttpOnly via `@supabase/ssr` |
+| 2026-05-13 | 🟡 | Catalogue de règles SEO vide (`lib/scoring/rules.ts`) | S1-01 : 17 règles P0 (TECH-001→008, CODE-001→007, GEO-001/002) + pondérations + helpers + 13 tests catalogue |
 
 ## Comment ajouter une entrée
 
