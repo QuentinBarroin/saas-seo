@@ -125,16 +125,32 @@ describe('detectors/crawler · TECH-private-page-indexable', () => {
     expect(String(f!.evidence.pattern).toLowerCase()).toContain('admin');
   });
 
-  it('URL avec token long (≥ 20 chars) → finding', () => {
-    const findings = detectFromCrawl(
-      mkCrawl([mkPage(`${ORIGIN}/share/abcdefghij1234567890ABCDEF`, FULL_HTML)])
-    );
-    expect(findings.some((f) => f.ruleId === 'TECH-private-page-indexable')).toBe(true);
+  it.each([
+    `${ORIGIN}/share/abcdefghij1234567890ABCDEF`, // prefix /share/
+    `${ORIGIN}/invite/xyz`, // prefix /invite/
+    `${ORIGIN}/r/abcdefghijklmnopqrstuvwx`, // alphanumérique ≥ 24 sans dashes
+    `${ORIGIN}/profil/550e8400-e29b-41d4-a716-446655440000`, // UUID v4
+  ])('URL avec token réel → finding · %s', (url) => {
+    expect(
+      detectFromCrawl(mkCrawl([mkPage(url, FULL_HTML)])).some(
+        (f) => f.ruleId === 'TECH-private-page-indexable'
+      )
+    ).toBe(true);
   });
 
-  it('URL standard /pricing → pas de finding', () => {
-    const findings = detectFromCrawl(mkCrawl([mkPage(`${ORIGIN}/pricing`, FULL_HTML)]));
-    expect(findings.some((f) => f.ruleId === 'TECH-private-page-indexable')).toBe(false);
+  it.each([
+    `${ORIGIN}/pricing`,
+    // Régression novera-talent.com : slugs SEO légitimes ne doivent PAS être flaggés
+    `${ORIGIN}/articles/comment-recruter-un-product-manager-senior`,
+    `${ORIGIN}/missions/freelance-data-scientist-remote-2026`,
+    `${ORIGIN}/entreprises/onboarding-developpeur-fullstack`,
+    `${ORIGIN}/profil/marie-dupont`, // slug court avec dash
+  ])('URL slug SEO légitime → PAS de finding · %s', (url) => {
+    expect(
+      detectFromCrawl(mkCrawl([mkPage(url, FULL_HTML)])).some(
+        (f) => f.ruleId === 'TECH-private-page-indexable'
+      )
+    ).toBe(false);
   });
 });
 
