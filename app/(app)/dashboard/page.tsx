@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus, FolderPlus } from 'lucide-react';
+import { Plus, FolderPlus, Zap } from 'lucide-react';
 import {
   NvButton,
   NvCard,
@@ -8,6 +8,7 @@ import {
   NvStatusBadge,
 } from '@/components/nv';
 import { listProjects } from '@/lib/projects/list';
+import { launchAudit } from './actions';
 
 export default async function DashboardPage() {
   const projects = await listProjects();
@@ -52,7 +53,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {projects.map((p) => (
           <NvCard key={p.id} padding="sm">
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-[16px] font-bold tracking-tight text-[var(--nv-navy)]">
@@ -80,6 +81,12 @@ export default async function DashboardPage() {
                 </span>
                 <span>audits</span>
               </div>
+              <form action={launchAudit}>
+                <input type="hidden" name="projectId" value={p.id} />
+                <NvButton type="submit" variant="primary" size="sm" className="w-full">
+                  <Zap size={14} strokeWidth={2} /> Lancer un audit
+                </NvButton>
+              </form>
             </div>
           </NvCard>
         ))}

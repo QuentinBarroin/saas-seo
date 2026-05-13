@@ -1,17 +1,18 @@
 import { inngest } from './client';
+import { runAudit } from './functions/run-audit';
 
 /**
- * Job de test pour valider que la plomberie Inngest répond.
- * À supprimer dès que `audit/run` (Sprint 1) est en place.
+ * Job de test pour vérifier la plomberie Inngest (`test/ping`).
+ * Utile pendant le dev pour valider que l'endpoint répond.
  */
 const ping = inngest.createFunction(
   { id: 'test-ping' },
   { event: 'test/ping' },
-  async ({ event, step }) => {
-    await step.run('echo', () => {
-      return { received: event.data.message ?? 'ok', at: new Date().toISOString() };
-    });
-  }
+  async ({ event, step }) =>
+    step.run('echo', () => ({
+      received: event.data.message ?? 'ok',
+      at: new Date().toISOString(),
+    }))
 );
 
-export const functions = [ping];
+export const functions = [ping, runAudit];
