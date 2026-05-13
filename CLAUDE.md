@@ -95,7 +95,7 @@ saas-audit-seo/
 │   ├── commands/charger-contexte.md
 │   └── agents/                     # 6 sub-agents
 ├── tests/
-└── docker-compose.yml              # Postgres 16 sur :5433
+└── docker-compose.yml              # Postgres 16 sur :5434
 ```
 
 ## 5. Commandes essentielles

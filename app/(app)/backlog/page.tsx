@@ -1,10 +1,12 @@
+import { PlaceholderPage } from '@/components/placeholder-page';
+
 export default function BacklogPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Backlog</h1>
-      <p className="text-neutral-600">
-        Backlog Claude Code + export Markdown. À implémenter en Sprint 2.
-      </p>
-    </div>
+    <PlaceholderPage
+      title="Backlog"
+      description="Backlog Claude Code généré (prompts par PR) + export Markdown."
+      sprintLabel="Sprint 2"
+      taskIds={['S2-11', 'S2-12']}
+    />
   );
 }

@@ -1,10 +1,12 @@
+import { PlaceholderPage } from '@/components/placeholder-page';
+
 export default function ContentGapPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Content gap</h1>
-      <p className="text-neutral-600">
-        Pages manquantes et architecture cible. À implémenter en Sprint 2.
-      </p>
-    </div>
+    <PlaceholderPage
+      title="Content gap"
+      description="Pages manquantes + architecture cible (ARCH-001 à ARCH-004) + fiches SEO recommandées."
+      sprintLabel="Sprint 2"
+      taskIds={['S2-09', 'S2-10']}
+    />
   );
 }

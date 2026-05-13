@@ -1,8 +1,12 @@
+import { PlaceholderPage } from '@/components/placeholder-page';
+
 export default function KeywordsPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Keywords</h1>
-      <p className="text-neutral-600">Mots-clés et clusters manuels. À implémenter en Sprint 2.</p>
-    </div>
+    <PlaceholderPage
+      title="Keywords"
+      description="Mots-clés (seed, GSC, DataForSEO) + clusters manuels + intention + keyword argent."
+      sprintLabel="Sprint 2"
+      taskIds={['S2-03', 'S2-07']}
+    />
   );
 }

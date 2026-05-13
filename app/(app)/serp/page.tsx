@@ -1,10 +1,12 @@
+import { PlaceholderPage } from '@/components/placeholder-page';
+
 export default function SerpPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">SERP</h1>
-      <p className="text-neutral-600">
-        Top 10 organique, PAA et concurrents. À implémenter en Sprint 2.
-      </p>
-    </div>
+    <PlaceholderPage
+      title="SERP"
+      description="Top 10 organique + PAA + concurrents auto-détectés (DataForSEO)."
+      sprintLabel="Sprint 2"
+      taskIds={['S2-05', 'S2-06', 'S2-08']}
+    />
   );
 }

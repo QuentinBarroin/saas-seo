@@ -1,10 +1,12 @@
+import { PlaceholderPage } from '@/components/placeholder-page';
+
 export default function IntegrationsPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Integrations</h1>
-      <p className="text-neutral-600">
-        Configuration Google OAuth, DataForSEO, etc. À implémenter en Sprint 2.
-      </p>
-    </div>
+    <PlaceholderPage
+      title="Integrations"
+      description="Google OAuth (GSC), credentials DataForSEO chiffrés (AES-256-GCM)."
+      sprintLabel="Sprint 2"
+      taskIds={['S2-01', 'S2-02', 'S2-04']}
+    />
   );
 }

@@ -43,8 +43,8 @@ pnpm prisma:migrate
 ### Option B — Postgres local via Docker
 
 ```bash
-pnpm db:up                 # démarre Postgres 16 sur le port 5433
-# Mettre DATABASE_URL=postgresql://saas_audit_seo:saas_audit_seo_dev_password@localhost:5433/saas_audit_seo
+pnpm db:up                 # démarre Postgres 16 sur le port 5434
+# Mettre DATABASE_URL=postgresql://saas_audit_seo:saas_audit_seo_dev_password@localhost:5434/saas_audit_seo
 pnpm prisma:migrate
 ```
 

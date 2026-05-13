@@ -32,7 +32,8 @@ export function encrypt(plaintext: string): string {
 
 export function decrypt(payload: string): string {
   const buf = Buffer.from(payload, 'base64');
-  if (buf.length < IV_LEN + TAG_LEN + 1) throw new Error('Invalid ciphertext');
+  // IV (12) + tag (16) = 28 bytes minimum ; un plaintext vide produit un ciphertext de 0 byte.
+  if (buf.length < IV_LEN + TAG_LEN) throw new Error('Invalid ciphertext');
   const iv = buf.subarray(0, IV_LEN);
   const tag = buf.subarray(IV_LEN, IV_LEN + TAG_LEN);
   const ciphertext = buf.subarray(IV_LEN + TAG_LEN);

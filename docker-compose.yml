@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: saas_audit_seo_dev_password
       POSTGRES_DB: saas_audit_seo
     ports:
-      - '5433:5432'
+      - '5434:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

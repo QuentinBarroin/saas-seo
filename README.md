@@ -11,7 +11,7 @@ Voir [QUICKSTART.md](./QUICKSTART.md) pour le détail. Résumé :
 ```bash
 pnpm install
 cp .env.example .env.local        # à remplir
-pnpm db:up                         # postgres local sur :5433 (si pas Supabase distant)
+pnpm db:up                         # postgres local sur :5434 (si pas Supabase distant)
 pnpm prisma:migrate
 pnpm dev
 ```
