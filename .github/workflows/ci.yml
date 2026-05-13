@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint + Typecheck + Tests + Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm prisma generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Build
+        env:
+          # Build accepte des dummies (validation env Zod activée uniquement runtime)
+          DATABASE_URL: 'postgresql://dummy:dummy@localhost:5432/dummy'
+          DIRECT_URL: 'postgresql://dummy:dummy@localhost:5432/dummy'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://dummy.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'dummy'
+        run: pnpm build

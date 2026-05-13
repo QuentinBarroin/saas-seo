@@ -1,0 +1,210 @@
+// schema.prisma
+// Modèle MVP. Aligné sur 04_architecture/modele-donnees.md (base Obsidian).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =====================================================================
+// Racine d'un projet à auditer (un domaine + un repo + une cible business)
+// =====================================================================
+model SeoProject {
+  id              String   @id @default(cuid())
+  name            String
+  domain          String
+  repoUrl         String?
+  market          String   @default("FR")
+  type            String
+  businessGoal    String
+  integrationsEnc Bytes? // JSON chiffré : credentials DataForSEO, GSC property, etc.
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  keywords    Keyword[]
+  pages       SeoPage[]
+  audits      SeoAudit[]
+  competitors Competitor[]
+  backlog     BacklogItem[]
+  findings    Finding[]
+
+  @@index([domain])
+}
+
+model Keyword {
+  id               String  @id @default(cuid())
+  projectId        String
+  query            String
+  cluster          String?
+  intent           String? // tofu | mofu | bofu | navigational
+  isMoneyKeyword   Boolean @default(false)
+  source           String? // seed | gsc | dataforseo | ads | ai
+  volume           Int?
+  cpc              Float?
+  difficulty       Float?
+  priorityScore    Float?
+  associatedPageId String?
+
+  project SeoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, cluster])
+  @@index([query])
+}
+
+model SeoPage {
+  id              String  @id @default(cuid())
+  projectId       String
+  url             String?
+  slug            String?
+  pageType        String? // home | pillar | child | listing | bofu | tofu
+  targetKeyword   String?
+  cluster         String?
+  status          String // existing | recommended | in_progress | done
+  title           String?
+  description     String?
+  h1              String?
+  wordCount       Int?
+  indexable       Boolean?
+  canonical       String?
+  hasJsonLd       Boolean?
+  hasFaq          Boolean?
+  hasCta          Boolean?
+  technicalScore  Float?
+  contentScore    Float?
+  geoScore        Float?
+  conversionScore Float?
+
+  project SeoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
+}
+
+model SeoAudit {
+  id                String    @id @default(cuid())
+  projectId         String
+  globalScore       Float?
+  technicalScore    Float?
+  contentScore      Float?
+  architectureScore Float?
+  conversionScore   Float?
+  geoScore          Float?
+  findingsJson      Json
+  backlogJson       Json
+  runLog            Json?
+  status            String // pending | running | done | error | partial
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  project  SeoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  findings Finding[]
+
+  @@index([projectId, createdAt])
+}
+
+model Finding {
+  id          String   @id @default(cuid())
+  projectId   String
+  auditId     String
+  category    String // technical | content | architecture | conversion | geo
+  severity    String // critical | high | medium | low
+  title       String
+  description String
+  evidence    Json?
+  pageUrl     String?
+  filePath    String?
+  rule        String
+  createdAt   DateTime @default(now())
+
+  project      SeoProject    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  audit        SeoAudit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  backlogItems BacklogItem[]
+
+  @@index([projectId, severity])
+  @@index([auditId])
+}
+
+model Competitor {
+  id            String  @id @default(cuid())
+  projectId     String
+  domain        String
+  name          String?
+  source        String? // manual | serp_auto
+  serpFrequency Int?
+  notesJson     Json?
+
+  project SeoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, domain])
+}
+
+model BacklogItem {
+  id                 String   @id @default(cuid())
+  projectId          String
+  title              String
+  description        String
+  priority           String // P0 | P1 | P2
+  effort             String // XS | S | M | L | XL
+  category           String
+  status             String // todo | in_progress | done | discarded
+  acceptanceCriteria Json?
+  claudePrompt       String?
+  sourceFindingId    String?
+  filePathsTargeted  Json?
+  testsExpected      Json?
+  definitionOfDone   String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  project SeoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  finding Finding?   @relation(fields: [sourceFindingId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, priority])
+  @@index([projectId, status])
+}
+
+model SerpResult {
+  id        String   @id @default(cuid())
+  projectId String
+  keyword   String
+  market    String   @default("FR")
+  rank      Int
+  url       String
+  title     String?
+  snippet   String?
+  domain    String
+  fetchedAt DateTime @default(now())
+
+  @@index([projectId, keyword, fetchedAt])
+}
+
+model SerpPAA {
+  id        String   @id @default(cuid())
+  projectId String
+  keyword   String
+  question  String
+  fetchedAt DateTime @default(now())
+
+  @@index([projectId, keyword])
+}
+
+model GscQueryStat {
+  id          String   @id @default(cuid())
+  projectId   String
+  date        DateTime
+  query       String?
+  page        String?
+  clicks      Int
+  impressions Int
+  ctr         Float
+  position    Float
+
+  @@index([projectId, date])
+  @@index([projectId, query])
+  @@index([projectId, page])
+}

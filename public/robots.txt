@@ -1,0 +1,3 @@
+# Le SaaS lui-même ne doit pas être indexé.
+User-agent: *
+Disallow: /
