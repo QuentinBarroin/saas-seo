@@ -5,7 +5,7 @@
 - Toutes les routes sont des **Next.js Route Handlers** dans `app/api/*/route.ts`.
 - Validation Zod sur path params, query, body.
 - Format d'erreur uniforme : `{ error: { code, message, details? } }`.
-- Auth via cookie Supabase, vérifié par un middleware (à wirer S0-04). Mono-user.
+- Auth via cookie Supabase HttpOnly, vérifié par `middleware.ts` (`supabase.auth.getUser()`). Mono-user.
 - CORS désactivé pour les routes API (le SaaS est mono-tenant interne).
 - Rate limit : pas en MVP (mono-user, pas de risque). À ajouter en Lot 1+.
 - Pagination max serveur : 100 lignes par défaut (paramètre `limit`).

@@ -15,7 +15,7 @@
 - **Supabase Auth** email/password.
 - Mono-user en MVP.
 - Refresh tokens stockés en HttpOnly cookie via `@supabase/ssr`.
-- Middleware Next.js protège `app/(app)/*` (à wirer S0-04).
+- Middleware Next.js (`middleware.ts`) protège `app/(app)/*` via `supabase.auth.getUser()`.
 
 ## RLS Supabase
 

@@ -2,7 +2,7 @@
 
 Opérationnel immédiat pour Claude Code travaillant sur `saas-audit-seo`. Tout est dérivé du scaffold réel et de la base Obsidian de cadrage produit. Incertitudes marquées `UNCERTAIN`.
 
-## 1. Vue d'ensemble
+## 1. Vue d'ensemble²
 
 **Produit** : `saas-audit-seo` — SaaS interne d'audit SEO/GEO transformant un audit en backlog Claude Code exécutable.
 **Statut** : scaffold initial — aucune feature SEO encore en place. Sprint 0 en cours.
@@ -73,7 +73,7 @@ saas-audit-seo/
 │   ├── api/
 │   │   ├── health/route.ts
 │   │   └── inngest/route.ts        # endpoint Inngest
-│   ├── login/page.tsx              # auth Supabase à wirer (S0-04)
+│   ├── login/page.tsx              # auth Supabase (form + Server Action)
 │   ├── layout.tsx
 │   └── page.tsx
 ├── lib/
@@ -146,7 +146,7 @@ pnpm dlx inngest-cli@latest dev     # dev server Inngest, :8288
 
 ## 9. Règles de sécurité
 
-- **Auth** : Supabase Auth email/password, mono-user. À wirer en S0-04.
+- **Auth** : Supabase Auth email/password, mono-user. Wirée via `middleware.ts` + Server Actions `app/login/actions.ts`.
 - **RLS Supabase** activé dès le départ même en mono-user (bonne hygiène).
 - **CSP strict** dans Next.js, pas d'eval, pas d'inline JS hors hash.
 - **Secrets** : `.env` jamais committé. `.env.example` est la source de vérité de la liste.
