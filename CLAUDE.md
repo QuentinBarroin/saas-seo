@@ -46,7 +46,8 @@ Versions exactes (cf. `package.json`) :
 - Next.js `^15.1.0` (App Router)
 - React `^19.0.0`
 - TypeScript `^5.7.2` (strict + noUncheckedIndexedAccess)
-- Tailwind CSS `^3.4.17`
+- Tailwind CSS `^3.4.17` + shadcn/ui (palette neutral en place)
+- Design system **"Sp"** (navy + gold + Manrope, scoped `[data-theme="sp"]`) — doc canonique : base Obsidian `04_architecture/design-system.md`. Adoption code à acter en ADR.
 - Prisma `^6.1.0` (+ `@prisma/client`)
 - `@supabase/ssr ^0.5.2`, `@supabase/supabase-js ^2.46.2`
 - Inngest `^3.27.0`
