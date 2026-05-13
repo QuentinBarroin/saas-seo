@@ -1,0 +1,106 @@
+{
+  "version": "v1",
+  "fixture": "golden-site",
+  "meta": {
+    "pagesCrawled": 6,
+    "sitemapStatus": 404,
+    "robotsStatus": 404,
+    "skippedByRobots": 0
+  },
+  "score": {
+    "global": 63.7,
+    "perCategory": {
+      "technical": 0,
+      "content": 97,
+      "architecture": 100,
+      "conversion": 100,
+      "geo": 94
+    }
+  },
+  "findingsCount": 10,
+  "findingsBySeverity": {
+    "critical": 4,
+    "high": 1,
+    "medium": 5,
+    "low": 0
+  },
+  "findingsByCategory": {
+    "technical": 7,
+    "content": 1,
+    "architecture": 0,
+    "conversion": 0,
+    "geo": 2
+  },
+  "findings": [
+    {
+      "ruleId": "GEO-missing-organization-jsonld",
+      "severity": "medium",
+      "category": "geo",
+      "confidence": "certain",
+      "ref": "https://golden.example.com/"
+    },
+    {
+      "ruleId": "GEO-missing-softwareapplication-jsonld",
+      "severity": "medium",
+      "category": "geo",
+      "confidence": "certain",
+      "ref": "https://golden.example.com/"
+    },
+    {
+      "ruleId": "TECH-broken-status",
+      "severity": "critical",
+      "category": "technical",
+      "confidence": "certain",
+      "ref": "https://golden.example.com/broken"
+    },
+    {
+      "ruleId": "TECH-missing-canonical",
+      "severity": "medium",
+      "category": "technical",
+      "confidence": "certain",
+      "ref": "https://golden.example.com/"
+    },
+    {
+      "ruleId": "TECH-missing-h1",
+      "severity": "medium",
+      "category": "content",
+      "confidence": "certain",
+      "ref": "https://golden.example.com/pricing"
+    },
+    {
+      "ruleId": "TECH-missing-robots",
+      "severity": "medium",
+      "category": "technical",
+      "confidence": "certain",
+      "ref": "https://golden.example.com"
+    },
+    {
+      "ruleId": "TECH-missing-sitemap",
+      "severity": "high",
+      "category": "technical",
+      "confidence": "certain",
+      "ref": "https://golden.example.com"
+    },
+    {
+      "ruleId": "TECH-noindex-on-public-page",
+      "severity": "critical",
+      "category": "technical",
+      "confidence": "certain",
+      "ref": "https://golden.example.com/noindex-marketing"
+    },
+    {
+      "ruleId": "TECH-private-page-indexable",
+      "severity": "critical",
+      "category": "technical",
+      "confidence": "certain",
+      "ref": "https://golden.example.com/admin"
+    },
+    {
+      "ruleId": "TECH-private-page-indexable",
+      "severity": "critical",
+      "category": "technical",
+      "confidence": "certain",
+      "ref": "https://golden.example.com/r/abcdefghijklmnopqrstuvwx"
+    }
+  ]
+}
