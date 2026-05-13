@@ -1,6 +1,12 @@
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, FolderPlus } from 'lucide-react';
+import {
+  NvButton,
+  NvCard,
+  NvEmptyState,
+  NvPageHeader,
+  NvStatusBadge,
+} from '@/components/nv';
 import { listProjects } from '@/lib/projects/list';
 
 export default async function DashboardPage() {
@@ -8,57 +14,74 @@ export default async function DashboardPage() {
 
   if (projects.length === 0) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Crée ton premier projet pour lancer un audit.
-          </p>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Aucun projet</CardTitle>
-            <CardDescription>
-              Un projet SEO regroupe : un domaine, un repo optionnel, des concurrents et des seed keywords.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <Link href="/projects/new">Créer un projet</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="space-y-8">
+        <NvPageHeader
+          title="Dashboard"
+          subtitle="Crée ton premier projet pour lancer un audit SEO/GEO."
+        />
+        <NvEmptyState
+          icon={<FolderPlus size={28} strokeWidth={1.75} />}
+          title="Aucun projet pour l'instant"
+          description="Un projet SEO regroupe un domaine, un repo optionnel, des concurrents et des seed keywords. Tu pourras ensuite lancer un audit."
+          primaryAction={
+            <NvButton asChild variant="primary" size="md">
+              <Link href="/projects/new">
+                <Plus size={16} strokeWidth={2} /> Créer un projet
+              </Link>
+            </NvButton>
+          }
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">{projects.length} projet(s)</p>
-        </div>
-        <Button asChild>
-          <Link href="/projects/new">Nouveau projet</Link>
-        </Button>
-      </div>
+    <div className="space-y-8">
+      <NvPageHeader
+        title="Dashboard"
+        subtitle={`${projects.length} projet${projects.length > 1 ? 's' : ''} actif${projects.length > 1 ? 's' : ''}.`}
+        action={
+          <NvButton asChild variant="primary" size="md">
+            <Link href="/projects/new">
+              <Plus size={16} strokeWidth={2} /> Nouveau projet
+            </Link>
+          </NvButton>
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {projects.map((p) => (
-          <Card key={p.id}>
-            <CardHeader>
-              <CardTitle className="text-base">{p.name}</CardTitle>
-              <CardDescription>
-                {p.domain} · {p.type} · {p.market}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>
-                {p._count.keywords} kw · {p._count.competitors} concurrents · {p._count.audits} audits
-              </span>
-            </CardContent>
-          </Card>
+          <NvCard key={p.id} padding="sm">
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[16px] font-bold tracking-tight text-[var(--nv-navy)]">
+                    {p.name}
+                  </p>
+                  <p className="mt-0.5 truncate text-[13px] text-[var(--nv-text-muted)]">
+                    {p.domain}
+                  </p>
+                </div>
+                <NvStatusBadge variant="neutral">{p.market}</NvStatusBadge>
+              </div>
+              <div className="flex items-center gap-3 border-t border-[var(--nv-border)] pt-3 text-[12px] text-[var(--nv-text-muted)]">
+                <span className="nv-numeric font-semibold text-[var(--nv-navy)]">
+                  {p._count.keywords}
+                </span>
+                <span>kw</span>
+                <span className="text-[var(--nv-border)]">·</span>
+                <span className="nv-numeric font-semibold text-[var(--nv-navy)]">
+                  {p._count.competitors}
+                </span>
+                <span>concurrents</span>
+                <span className="text-[var(--nv-border)]">·</span>
+                <span className="nv-numeric font-semibold text-[var(--nv-navy)]">
+                  {p._count.audits}
+                </span>
+                <span>audits</span>
+              </div>
+            </div>
+          </NvCard>
         ))}
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { NvButton, NvField, NvInput } from '@/components/nv';
 import { signIn, type SignInState } from './actions';
 
 const initialState: SignInState = {};
@@ -11,45 +12,34 @@ export function LoginForm({ next }: { next?: string }) {
   return (
     <form action={formAction} className="space-y-4">
       {next ? <input type="hidden" name="next" value={next} /> : null}
-      <div className="space-y-1">
-        <label htmlFor="email" className="block text-sm font-medium">
-          Email
-        </label>
-        <input
+      <NvField label="Email" required htmlFor="email">
+        <NvInput
           id="email"
           name="email"
           type="email"
           required
           autoComplete="email"
-          className="w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
+          placeholder="vous@novera.fr"
         />
-      </div>
-      <div className="space-y-1">
-        <label htmlFor="password" className="block text-sm font-medium">
-          Mot de passe
-        </label>
-        <input
+      </NvField>
+      <NvField label="Mot de passe" required htmlFor="password">
+        <NvInput
           id="password"
           name="password"
           type="password"
           required
           autoComplete="current-password"
           minLength={8}
-          className="w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
         />
-      </div>
+      </NvField>
       {state.error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-[13px] text-[var(--nv-danger)]">
           {state.error}
         </p>
       ) : null}
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:opacity-60"
-      >
+      <NvButton type="submit" disabled={pending} size="md" className="w-full">
         {pending ? 'Connexion…' : 'Se connecter'}
-      </button>
+      </NvButton>
     </form>
   );
 }

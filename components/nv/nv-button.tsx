@@ -1,4 +1,5 @@
 import { type ButtonHTMLAttributes, forwardRef } from 'react';
+import { Slot } from '@radix-ui/react-slot';
 import { cn } from '@/lib/utils';
 
 type Variant = 'primary' | 'secondary' | 'dark' | 'ghost' | 'danger';
@@ -7,6 +8,8 @@ type Size = 'sm' | 'md' | 'lg';
 type NvButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   size?: Size;
+  /** Compose en `<Link>`/anchor via Slot Radix. Préserve les styles du bouton. */
+  asChild?: boolean;
 };
 
 const variantClasses: Record<Variant, string> = {
@@ -26,19 +29,22 @@ const sizeClasses: Record<Size, string> = {
 };
 
 export const NvButton = forwardRef<HTMLButtonElement, NvButtonProps>(
-  ({ variant = 'primary', size = 'md', className, children, ...props }, ref) => (
-    <button
-      ref={ref}
-      className={cn(
-        'nv-focus-ring inline-flex items-center justify-center gap-2 rounded-[12px] tracking-tight transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed',
-        variantClasses[variant],
-        sizeClasses[size],
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </button>
-  )
+  ({ variant = 'primary', size = 'md', asChild = false, className, children, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button';
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          'nv-focus-ring inline-flex items-center justify-center gap-2 rounded-[12px] tracking-tight transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed',
+          variantClasses[variant],
+          sizeClasses[size],
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </Comp>
+    );
+  }
 );
 NvButton.displayName = 'NvButton';
