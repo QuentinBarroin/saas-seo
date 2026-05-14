@@ -13,15 +13,14 @@ export type SerpPageData = {
     domain: string;
   }>;
   paa: string[];
-  competitors: Array<{ domain: string; frequency: number }>;
+  competitors: Array<{ domain: string; frequency: number; source: string }>;
 };
 
 /**
  * Récupère toutes les données nécessaires à la page /serp pour un projet donné.
  *
- * Concurrents : agrégation naïve sur toutes les rows SerpResult existantes (MVP).
- * Raffinement S2-08 : ne compter que les dernières fenêtres par keyword pour éviter
- * biais multi-audits.
+ * Concurrents : lecture depuis la table Competitor, mise à jour automatiquement
+ * par la step competitors-detection après chaque audit SERP (S2-08).
  */
 export async function getSerpPageData(
   projectId: string,
@@ -82,17 +81,17 @@ export async function getSerpPageData(
     }
   }
 
-  const competitorsRaw = await db.serpResult.groupBy({
-    by: ['domain'],
-    where: { projectId, domain: { not: project.domain } },
-    _count: { domain: true },
-    orderBy: { _count: { domain: 'desc' } },
-    take: 20,
-  });
-
-  const competitors = competitorsRaw.map((c) => ({
+  const competitors = (
+    await db.competitor.findMany({
+      where: { projectId, serpFrequency: { not: null } },
+      select: { domain: true, serpFrequency: true, source: true },
+      orderBy: { serpFrequency: 'desc' },
+      take: 20,
+    })
+  ).map((c) => ({
     domain: c.domain,
-    frequency: c._count.domain,
+    frequency: c.serpFrequency ?? 0,
+    source: c.source ?? 'serp_auto',
   }));
 
   return {

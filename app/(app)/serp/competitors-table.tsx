@@ -1,5 +1,5 @@
 type Props = {
-  competitors: Array<{ domain: string; frequency: number }>;
+  competitors: Array<{ domain: string; frequency: number; source: string }>;
 };
 
 export function CompetitorsTable({ competitors }: Props) {
@@ -22,6 +22,9 @@ export function CompetitorsTable({ competitors }: Props) {
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--nv-text-muted)]">
               Domaine
             </th>
+            <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--nv-text-muted)]">
+              Source
+            </th>
             <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--nv-text-muted)]">
               Fréquence top 10
             </th>
@@ -38,6 +41,17 @@ export function CompetitorsTable({ competitors }: Props) {
               </td>
               <td className="px-4 py-3 text-sm font-medium text-[var(--nv-navy)]">
                 {comp.domain}
+              </td>
+              <td className="px-4 py-3 text-center">
+                {comp.source === 'manual' ? (
+                  <span className="inline-flex items-center rounded-full bg-[var(--nv-gold)] px-2 py-0.5 text-xs font-medium text-[var(--nv-navy)]">
+                    Manuel
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-[var(--nv-bg)] px-2 py-0.5 text-xs font-medium text-[var(--nv-text-muted)]">
+                    Auto
+                  </span>
+                )}
               </td>
               <td className="nv-numeric px-4 py-3 text-right text-sm font-semibold text-[var(--nv-navy)]">
                 {comp.frequency}

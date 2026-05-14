@@ -161,8 +161,9 @@ export default async function SerpPage({ searchParams }: PageProps) {
                   </h2>
                 </div>
                 <p className="text-sm text-[var(--nv-text-muted)]">
-                  Top 20 des domaines les plus fréquents dans le top 10 de tous les seed
-                  keywords (agrégat naïf MVP, raffinement S2-08).
+                  Concurrents persistés à chaque audit : top des domaines apparaissant dans
+                  votre top 10 SERP, sur l&apos;ensemble des seed keywords. Inclut concurrents
+                  manuels enrichis automatiquement.
                 </p>
               </div>
               <CompetitorsTable competitors={data.competitors} />

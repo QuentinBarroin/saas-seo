@@ -13,10 +13,12 @@ vi.mock('@/lib/db', () => {
       serpResult: {
         findFirst: vi.fn(),
         findMany: vi.fn(),
-        groupBy: vi.fn(),
       },
       serpPAA: {
         findFirst: vi.fn(),
+        findMany: vi.fn(),
+      },
+      competitor: {
         findMany: vi.fn(),
       },
     },
@@ -39,7 +41,7 @@ describe('getSerpPageData', () => {
       domain: 'example.com',
     } as never);
     vi.mocked(db.keyword.findMany).mockResolvedValue([]);
-    vi.mocked(db.serpResult.groupBy).mockResolvedValue([]);
+    vi.mocked(db.competitor.findMany).mockResolvedValue([]);
 
     const result = await getSerpPageData('p1');
 
@@ -62,7 +64,7 @@ describe('getSerpPageData', () => {
     ]);
     vi.mocked(db.serpResult.findFirst).mockResolvedValue(null);
     vi.mocked(db.serpPAA.findFirst).mockResolvedValue(null);
-    vi.mocked(db.serpResult.groupBy).mockResolvedValue([]);
+    vi.mocked(db.competitor.findMany).mockResolvedValue([]);
 
     const result = await getSerpPageData('p1');
 
@@ -78,7 +80,7 @@ describe('getSerpPageData', () => {
     vi.mocked(db.keyword.findMany).mockResolvedValue([{ query: 'test' } as never]);
     vi.mocked(db.serpResult.findFirst).mockResolvedValue(null);
     vi.mocked(db.serpPAA.findFirst).mockResolvedValue(null);
-    vi.mocked(db.serpResult.groupBy).mockResolvedValue([]);
+    vi.mocked(db.competitor.findMany).mockResolvedValue([]);
 
     const result = await getSerpPageData('p1', 'test');
 
@@ -106,7 +108,7 @@ describe('getSerpPageData', () => {
       { question: 'Question 1?' } as never,
       { question: 'Question 2?' } as never,
     ]);
-    vi.mocked(db.serpResult.groupBy).mockResolvedValue([]);
+    vi.mocked(db.competitor.findMany).mockResolvedValue([]);
 
     const result = await getSerpPageData('p1', 'test');
 
@@ -121,7 +123,7 @@ describe('getSerpPageData', () => {
     expect(result?.paa).toEqual(['Question 1?', 'Question 2?']);
   });
 
-  it('exclut le domaine du projet des concurrents', async () => {
+  it('lit les concurrents depuis la table Competitor avec source', async () => {
     vi.mocked(db.seoProject.findUnique).mockResolvedValue({
       id: 'p1',
       name: 'Test Project',
@@ -130,21 +132,21 @@ describe('getSerpPageData', () => {
     vi.mocked(db.keyword.findMany).mockResolvedValue([{ query: 'test' } as never]);
     vi.mocked(db.serpResult.findFirst).mockResolvedValue(null);
     vi.mocked(db.serpPAA.findFirst).mockResolvedValue(null);
-    vi.mocked(db.serpResult.groupBy).mockResolvedValue([
-      { domain: 'competitor-a.com', _count: { domain: 5 } } as never,
-      { domain: 'competitor-b.com', _count: { domain: 3 } } as never,
+    vi.mocked(db.competitor.findMany).mockResolvedValue([
+      { domain: 'competitor-a.com', serpFrequency: 5, source: 'serp_auto' } as never,
+      { domain: 'competitor-b.com', serpFrequency: 3, source: 'manual' } as never,
     ]);
 
     const result = await getSerpPageData('p1', 'test');
 
     expect(result?.competitors).toEqual([
-      { domain: 'competitor-a.com', frequency: 5 },
-      { domain: 'competitor-b.com', frequency: 3 },
+      { domain: 'competitor-a.com', frequency: 5, source: 'serp_auto' },
+      { domain: 'competitor-b.com', frequency: 3, source: 'manual' },
     ]);
 
-    expect(vi.mocked(db.serpResult.groupBy)).toHaveBeenCalledWith(
+    expect(vi.mocked(db.competitor.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ domain: { not: 'my-domain.com' } }),
+        where: { projectId: 'p1', serpFrequency: { not: null } },
       })
     );
   });

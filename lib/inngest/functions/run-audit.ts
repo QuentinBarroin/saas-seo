@@ -15,6 +15,7 @@ import { getDataForSeoCredentials } from '@/lib/projects/integrations';
 import { fetchSerpLive } from '@/lib/connectors/dataforseo';
 import { runSerpStep } from '@/lib/serp/run-step';
 import { replaceSerpForAudit } from '@/lib/audits/persist-serp';
+import { detectCompetitorsFromSerp } from '@/lib/competitors/detect-from-serp';
 import { inngest } from '../client';
 
 function mapMarket(market: string): { locationCode: number; languageCode: string } {
@@ -187,6 +188,34 @@ export const runAudit = inngest.createFunction(
           const message = err instanceof Error ? err.message : 'unknown serp error';
           await appendAuditLog(auditId, {
             phase: 'serp',
+            at: new Date().toISOString(),
+            ok: false,
+            error: message,
+          });
+          return { error: message };
+        }
+      });
+
+      // ─── competitors-detection (S2-08) ────────────────────────────────
+      await step.run('competitors-detection', async () => {
+        try {
+          const result = await db.$transaction(async (tx) =>
+            detectCompetitorsFromSerp(tx, {
+              projectId,
+              projectDomain: project.domain,
+            })
+          );
+          await appendAuditLog(auditId, {
+            phase: 'competitors-detection',
+            at: new Date().toISOString(),
+            ok: true,
+            meta: result,
+          });
+          return result;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'unknown competitors error';
+          await appendAuditLog(auditId, {
+            phase: 'competitors-detection',
             at: new Date().toISOString(),
             ok: false,
             error: message,

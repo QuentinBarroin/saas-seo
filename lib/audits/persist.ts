@@ -10,6 +10,7 @@ export type AuditPhase =
   | 'findings-repo'
   | 'findings-geo'
   | 'serp'
+  | 'competitors-detection'
   | 'score'
   | 'finalize';
 
