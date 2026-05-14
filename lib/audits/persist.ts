@@ -10,6 +10,7 @@ export type AuditPhase =
   | 'findings-repo'
   | 'findings-geo'
   | 'findings-conversion'
+  | 'findings-architecture'
   | 'serp'
   | 'competitors-detection'
   | 'content-gap'

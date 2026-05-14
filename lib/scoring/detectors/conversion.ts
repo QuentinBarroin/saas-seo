@@ -1,8 +1,6 @@
 import type { CrawlResult, CrawledPage } from '@/lib/crawler/types';
 import { buildFinding, type FindingDraft } from '../finding';
-
-const SENSITIVE_URL_PATTERN =
-  /(?:\/(?:admin|share|invite|token)\b|\/[A-Za-z0-9_]{24,}(?:\/|\?|$)|\/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})/i;
+import { SENSITIVE_URL_PATTERN } from '../url-patterns';
 
 export type ConversionDetectorOptions = Record<string, never>;
 

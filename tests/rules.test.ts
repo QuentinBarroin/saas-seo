@@ -17,7 +17,7 @@ const CATEGORIES: Rule['category'][] = [
   'conversion',
   'geo',
 ];
-const DETECTORS: Rule['detector'][] = ['crawler', 'repo-scan'];
+const DETECTORS: Rule['detector'][] = ['crawler', 'repo-scan', 'architecture'];
 
 const ID_PATTERN = /^(TECH|CODE|GEO|ARCH|CONV)-[a-z0-9-]+$/;
 
@@ -69,6 +69,8 @@ describe('rules · catalogue', () => {
         expect(rule.detector, rule.id).toBe('crawler');
       } else if (prefix === 'CODE') {
         expect(rule.detector, rule.id).toBe('repo-scan');
+      } else if (prefix === 'ARCH') {
+        expect(rule.detector, rule.id).toBe('architecture');
       }
     }
   });
@@ -84,9 +86,11 @@ describe('rules · helpers', () => {
   it('rulesByDetector partitionne le catalogue', () => {
     const crawl = rulesByDetector('crawler');
     const repo = rulesByDetector('repo-scan');
-    expect(crawl.length + repo.length).toBe(rules.length);
+    const arch = rulesByDetector('architecture');
+    expect(crawl.length + repo.length + arch.length).toBe(rules.length);
     expect(crawl.every((r) => r.detector === 'crawler')).toBe(true);
     expect(repo.every((r) => r.detector === 'repo-scan')).toBe(true);
+    expect(arch.every((r) => r.detector === 'architecture')).toBe(true);
   });
 
   it('rulesByCategory filtre correctement', () => {

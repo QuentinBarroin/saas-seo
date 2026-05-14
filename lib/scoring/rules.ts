@@ -5,7 +5,7 @@
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type RuleCategory = 'technical' | 'content' | 'architecture' | 'conversion' | 'geo';
-export type Detector = 'crawler' | 'repo-scan';
+export type Detector = 'crawler' | 'repo-scan' | 'architecture';
 
 export interface Rule {
   id: string;
@@ -298,6 +298,21 @@ export const rules: Rule[] = [
     evidenceTemplate: 'URL: {url}',
     recommendationTemplate:
       "Ajouter un JSON-LD SoftwareApplication sur la home ou la page produit principale : `name`, `applicationCategory`, `operatingSystem`, `offers.price`, `aggregateRating`. Référence : https://schema.org/SoftwareApplication.",
+  },
+
+  // ─── ARCH-* (architecture, liens internes) ────────────────────────────────
+  {
+    id: 'ARCH-orphan-page',
+    category: 'architecture',
+    severity: 'medium',
+    title: 'Page orpheline',
+    description:
+      "Cette page est crawlée mais aucune autre page du domaine ne pointe vers elle (aucun lien interne entrant détecté). Google la découvre uniquement via le sitemap — pertinence affaiblie + signal de maillage cassé.",
+    detector: 'architecture',
+    condition: 'page is indexable, status 200, and has zero incoming internal links from other pages',
+    evidenceTemplate: 'URL: {url}',
+    recommendationTemplate:
+      "Ajouter au moins 1 lien interne depuis une page autorité (home, pillar de cluster, page d'index) vers cette page. Vérifier aussi le maillage thématique : la page devrait recevoir des liens depuis les pages du même cluster.",
   },
 ];
 
