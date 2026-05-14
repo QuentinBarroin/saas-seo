@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Zap, ArrowRight } from 'lucide-react';
+import { Zap, ArrowRight, Edit } from 'lucide-react';
 import { NvButton, NvCard, NvStatusBadge } from '@/components/nv';
 import type { ProjectSummary } from '@/lib/dashboard/get-dashboard-data';
 import { launchAudit } from './actions';
@@ -81,6 +81,11 @@ export function ProjectsGrid({ projects }: ProjectsGridProps) {
                   <Zap size={14} strokeWidth={2} /> Lancer
                 </NvButton>
               </form>
+              <NvButton asChild variant="ghost" size="sm">
+                <Link href={`/projects/${p.id}/edit`} aria-label="Éditer le projet">
+                  <Edit size={14} strokeWidth={2} />
+                </Link>
+              </NvButton>
               <NvButton asChild variant="secondary" size="sm">
                 <Link href={`/dashboard?projectId=${p.id}`}>
                   Voir <ArrowRight size={14} strokeWidth={2} />
