@@ -12,6 +12,7 @@ export type AuditPhase =
   | 'findings-conversion'
   | 'serp'
   | 'competitors-detection'
+  | 'content-gap'
   | 'score'
   | 'finalize';
 

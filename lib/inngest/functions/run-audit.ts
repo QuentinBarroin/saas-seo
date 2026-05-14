@@ -17,6 +17,7 @@ import { fetchSerpLive } from '@/lib/connectors/dataforseo';
 import { runSerpStep } from '@/lib/serp/run-step';
 import { replaceSerpForAudit } from '@/lib/audits/persist-serp';
 import { detectCompetitorsFromSerp } from '@/lib/competitors/detect-from-serp';
+import { generateContentGapRecommendations } from '@/lib/content-gap/generate-recommendations';
 import { inngest } from '../client';
 
 function mapMarket(market: string): { locationCode: number; languageCode: string } {
@@ -229,6 +230,31 @@ export const runAudit = inngest.createFunction(
           const message = err instanceof Error ? err.message : 'unknown competitors error';
           await appendAuditLog(auditId, {
             phase: 'competitors-detection',
+            at: new Date().toISOString(),
+            ok: false,
+            error: message,
+          });
+          return { error: message };
+        }
+      });
+
+      // ─── content-gap (S2-09) ───────────────────────────────────────────
+      await step.run('content-gap', async () => {
+        try {
+          const result = await db.$transaction(async (tx) =>
+            generateContentGapRecommendations(tx, { projectId })
+          );
+          await appendAuditLog(auditId, {
+            phase: 'content-gap',
+            at: new Date().toISOString(),
+            ok: true,
+            meta: result,
+          });
+          return result;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'unknown content-gap error';
+          await appendAuditLog(auditId, {
+            phase: 'content-gap',
             at: new Date().toISOString(),
             ok: false,
             error: message,
