@@ -32,7 +32,7 @@
 | GET | `/api/integrations/gsc/properties` | user | Lister propriétés GSC | S2-02 |
 | POST | `/api/integrations/gsc/associate` | user | Associer propriété→projet | S2-02 |
 | POST | `/api/integrations/dataforseo` | user | Sauver creds DataForSEO | S2-04 |
-| POST/GET/PATCH | `/api/keywords` | user | CRUD keywords | S2-07 |
+| N/A | `/api/keywords` | N/A | S2-07 utilise des Server Actions (`app/(app)/keywords/actions.ts`) plutôt qu'un endpoint HTTP — cohérent avec le pattern des autres formulaires du repo (voir `app/login/actions.ts`, `app/(app)/settings/integrations/actions.ts`) | S2-07 |
 | GET | `/api/backlog/[projectId]` | user | Lister backlog | S2-12 |
 | GET | `/api/backlog/[projectId]/export?format=md` | user | Export Markdown | S2-12 |
 
