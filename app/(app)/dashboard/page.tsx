@@ -1,17 +1,48 @@
 import Link from 'next/link';
-import { Plus, FolderPlus, Zap } from 'lucide-react';
+import { Plus, FolderPlus } from 'lucide-react';
+import { NvButton, NvEmptyState, NvPageHeader } from '@/components/nv';
 import {
-  NvButton,
-  NvCard,
-  NvEmptyState,
-  NvPageHeader,
-  NvStatusBadge,
-} from '@/components/nv';
-import { listProjects } from '@/lib/projects/list';
-import { launchAudit } from './actions';
+  listProjectSummaries,
+  getProjectDashboard,
+} from '@/lib/dashboard/get-dashboard-data';
+import { ProjectsGrid } from './projects-grid';
+import { ProjectDetail } from './project-detail';
 
-export default async function DashboardPage() {
-  const projects = await listProjects();
+type SearchParams = Promise<{ projectId?: string }>;
+
+type DashboardPageProps = {
+  searchParams: SearchParams;
+};
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const params = await searchParams;
+  const { projectId } = params;
+
+  if (projectId) {
+    const data = await getProjectDashboard(projectId);
+
+    if (!data) {
+      return (
+        <div className="space-y-8">
+          <NvPageHeader title="Projet introuvable" />
+          <NvEmptyState
+            icon={<FolderPlus size={28} strokeWidth={1.75} />}
+            title="Projet introuvable"
+            description="Le projet demandé n'existe pas ou a été supprimé."
+            primaryAction={
+              <NvButton asChild variant="primary" size="md">
+                <Link href="/dashboard">Retour au dashboard</Link>
+              </NvButton>
+            }
+          />
+        </div>
+      );
+    }
+
+    return <ProjectDetail data={data} />;
+  }
+
+  const projects = await listProjectSummaries();
 
   if (projects.length === 0) {
     return (
@@ -50,47 +81,7 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {projects.map((p) => (
-          <NvCard key={p.id} padding="sm">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[16px] font-bold tracking-tight text-[var(--nv-navy)]">
-                    {p.name}
-                  </p>
-                  <p className="mt-0.5 truncate text-[13px] text-[var(--nv-text-muted)]">
-                    {p.domain}
-                  </p>
-                </div>
-                <NvStatusBadge variant="neutral">{p.market}</NvStatusBadge>
-              </div>
-              <div className="flex items-center gap-3 border-t border-[var(--nv-border)] pt-3 text-[12px] text-[var(--nv-text-muted)]">
-                <span className="nv-numeric font-semibold text-[var(--nv-navy)]">
-                  {p._count.keywords}
-                </span>
-                <span>kw</span>
-                <span className="text-[var(--nv-border)]">·</span>
-                <span className="nv-numeric font-semibold text-[var(--nv-navy)]">
-                  {p._count.competitors}
-                </span>
-                <span>concurrents</span>
-                <span className="text-[var(--nv-border)]">·</span>
-                <span className="nv-numeric font-semibold text-[var(--nv-navy)]">
-                  {p._count.audits}
-                </span>
-                <span>audits</span>
-              </div>
-              <form action={launchAudit}>
-                <input type="hidden" name="projectId" value={p.id} />
-                <NvButton type="submit" variant="primary" size="sm" className="w-full">
-                  <Zap size={14} strokeWidth={2} /> Lancer un audit
-                </NvButton>
-              </form>
-            </div>
-          </NvCard>
-        ))}
-      </div>
+      <ProjectsGrid projects={projects} />
     </div>
   );
 }
