@@ -117,6 +117,8 @@ Index : `@@index([projectId, priority])`, `@@index([projectId, status])`.
 ### `SerpResult` / `SerpPAA`
 Stockage SERP DataForSEO. Permet le tracking dans le temps (`fetchedAt`).
 
+**Idempotence MVP** : la step Inngest `serp` (S2-05) écrit en DELETE-then-INSERT par `(projectId, fetchedAt >= audit.startedAt)`. La concurrence Inngest `limit: 1 par projectId` garantit l'absence d'écriture concurrente sur la fenêtre. Pas de FK `auditId` : le SERP est volontairement trackable dans le temps indépendamment des audits.
+
 ### `GscQueryStat`
 Stockage GSC : 1 ligne par (date, query, page).
 

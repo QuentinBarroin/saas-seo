@@ -6,6 +6,7 @@ export {
   type DataForSeoClient,
 } from './client';
 export { testCredentials } from './test-credentials';
+export { fetchSerpLive, type FetchSerpLiveResult } from './fetch-serp-live';
 export type {
   DataForSeoCredentials,
   DataForSeoEnvelope,

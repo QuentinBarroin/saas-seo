@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { getEnv } from '@/lib/env';
 import { crawl } from '@/lib/crawler';
 import type { CrawlResult } from '@/lib/crawler';
 import { detectFromCrawl } from '@/lib/scoring/detectors/crawler';
@@ -10,11 +11,20 @@ import {
   finalizeAudit,
   markAuditRunning,
 } from '@/lib/audits/persist';
+import { getDataForSeoCredentials } from '@/lib/projects/integrations';
+import { fetchSerpLive } from '@/lib/connectors/dataforseo';
+import { runSerpStep } from '@/lib/serp/run-step';
+import { replaceSerpForAudit } from '@/lib/audits/persist-serp';
 import { inngest } from '../client';
+
+function mapMarket(market: string): { locationCode: number; languageCode: string } {
+  if (market === 'FR') return { locationCode: 2250, languageCode: 'fr' };
+  return { locationCode: 2250, languageCode: 'fr' };
+}
 
 /**
  * Job d'audit principal (S1-07). Orchestre :
- *  init → crawl → findings-crawler + findings-geo → score → finalize.
+ *  init → crawl → findings-crawler + findings-geo → serp → score → finalize.
  *
  * **MVP scope** : crawler-only. La step `repo-scan` (S1-05) consomme un chemin
  * local sur la machine de l'auditeur — pas adapté à un exécution Inngest cloud
@@ -24,7 +34,8 @@ import { inngest } from '../client';
  *
  * **Idempotence** : chaque step est isolée via `step.run` (retry safe).
  * `replaceFindings` fait DELETE-then-INSERT par auditId → rejouer la finalisation
- * n'introduit pas de doublons. Cohérent avec CLAUDE.md §7.
+ * n'introduit pas de doublons. Step `serp` (S2-05) écrit en DELETE-then-INSERT
+ * par fenêtre temporelle, safe en retry grâce à concurrence Inngest limit=1 par projectId.
  */
 export const runAudit = inngest.createFunction(
   {
@@ -101,6 +112,87 @@ export const runAudit = inngest.createFunction(
           meta: { count: f.length },
         });
         return f;
+      });
+
+      // ─── serp (SERP live + PAA par keyword seed) ──────────────────────
+      await step.run('serp', async () => {
+        try {
+          const creds = await getDataForSeoCredentials(projectId);
+          if (!creds) {
+            await appendAuditLog(auditId, {
+              phase: 'serp',
+              at: new Date().toISOString(),
+              ok: true,
+              meta: { skipped: true, reason: 'no_credentials' },
+            });
+            return { skipped: true };
+          }
+
+          const env = getEnv();
+          const seedKeywords = await db.keyword.findMany({
+            where: { projectId, source: 'seed' },
+            select: { query: true },
+            take: env.MAX_KEYWORDS_PER_AUDIT,
+          });
+
+          if (seedKeywords.length === 0) {
+            await appendAuditLog(auditId, {
+              phase: 'serp',
+              at: new Date().toISOString(),
+              ok: true,
+              meta: { skipped: true, reason: 'no_seed_keywords' },
+            });
+            return { skipped: true };
+          }
+
+          const projectRecord = await db.seoProject.findUnique({
+            where: { id: projectId },
+            select: { market: true },
+          });
+          const market = projectRecord?.market ?? 'FR';
+
+          const { locationCode, languageCode } = mapMarket(market);
+
+          const fetchedAtFloor = new Date();
+
+          const outcome = await runSerpStep(
+            { keywords: seedKeywords.map((k) => k.query), market },
+            {
+              fetchSerp: (kw) => fetchSerpLive(creds, { keyword: kw, locationCode, languageCode }),
+              maxBudgetUsd: env.MAX_DATAFORSEO_USD_PER_AUDIT,
+            }
+          );
+
+          if (outcome.results.length > 0) {
+            await replaceSerpForAudit(projectId, fetchedAtFloor, outcome.results);
+          }
+
+          await appendAuditLog(auditId, {
+            phase: 'serp',
+            at: new Date().toISOString(),
+            ok: true,
+            meta: {
+              keywordsRequested: seedKeywords.length,
+              keywordsProcessed: outcome.results.length,
+              organicCount: outcome.results.reduce((s, r) => s + r.organic.length, 0),
+              paaCount: outcome.results.reduce((s, r) => s + r.paa.length, 0),
+              totalCostUsd: outcome.totalCostUsd,
+              cappedAt: outcome.cappedAt,
+              errorsCount: outcome.errors.length,
+            },
+          });
+
+          return { processed: outcome.results.length, costUsd: outcome.totalCostUsd };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'unknown serp error';
+          await appendAuditLog(auditId, {
+            phase: 'serp',
+            at: new Date().toISOString(),
+            ok: false,
+            error: message,
+          });
+          return { error: message };
+        }
       });
 
       // ─── score ─────────────────────────────────────────────────────────

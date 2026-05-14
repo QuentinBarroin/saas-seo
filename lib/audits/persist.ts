@@ -9,6 +9,7 @@ export type AuditPhase =
   | 'findings-crawler'
   | 'findings-repo'
   | 'findings-geo'
+  | 'serp'
   | 'score'
   | 'finalize';
 
