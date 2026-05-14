@@ -14,6 +14,9 @@ vi.mock('@/lib/db', () => {
       seoAudit: {
         findFirst: vi.fn(),
       },
+      backlogItem: {
+        findMany: vi.fn(),
+      },
     },
   };
 });
@@ -92,7 +95,9 @@ describe('getProjectDashboard', () => {
       name: 'Project 1',
       domain: 'example.com',
     } as never);
-    vi.mocked(db.seoAudit.findFirst).mockResolvedValue(null);
+    vi.mocked(db.seoAudit.findFirst)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
 
     const result = await getProjectDashboard('p1');
 
@@ -146,6 +151,12 @@ describe('getProjectDashboard', () => {
     vi.mocked(db.seoAudit.findFirst)
       .mockResolvedValueOnce(mockAudit as never)
       .mockResolvedValueOnce(null);
+
+    vi.mocked(db.backlogItem.findMany).mockResolvedValue([
+      { priority: 'P0' },
+      { priority: 'P1' },
+      { priority: 'P2' },
+    ] as never);
 
     const result = await getProjectDashboard('p1');
 

@@ -75,6 +75,12 @@ export type ProjectDashboard = {
       filePath: string | null;
       rule: string;
     }>;
+    backlog: {
+      count: number;
+      p0: number;
+      p1: number;
+      p2: number;
+    } | null;
   } | null;
   hasPendingAudit: boolean;
 };
@@ -126,6 +132,26 @@ export async function getProjectDashboard(
     },
   });
 
+  let backlogStats:
+    | { count: number; p0: number; p1: number; p2: number }
+    | null = null;
+
+  if (lastDoneAudit) {
+    const backlogItems = await db.backlogItem.findMany({
+      where: { projectId },
+      select: { priority: true },
+    });
+
+    if (backlogItems.length > 0) {
+      backlogStats = {
+        count: backlogItems.length,
+        p0: backlogItems.filter((i) => i.priority === 'P0').length,
+        p1: backlogItems.filter((i) => i.priority === 'P1').length,
+        p2: backlogItems.filter((i) => i.priority === 'P2').length,
+      };
+    }
+  }
+
   const pendingAudit = await db.seoAudit.findFirst({
     where: {
       projectId,
@@ -156,6 +182,7 @@ export async function getProjectDashboard(
             filePath: f.filePath,
             rule: f.rule,
           })),
+          backlog: backlogStats,
         }
       : null,
     hasPendingAudit: pendingAudit !== null,

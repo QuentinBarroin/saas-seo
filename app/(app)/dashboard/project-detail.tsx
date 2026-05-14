@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Zap, AlertTriangle, Sparkles, Target, ArrowLeft } from 'lucide-react';
+import { Zap, AlertTriangle, Sparkles, ArrowLeft } from 'lucide-react';
 import {
   NvButton,
   NvPageHeader,
@@ -111,29 +111,39 @@ export function ProjectDetail({ data }: ProjectDetailProps) {
           <div className="flex items-center gap-2">
             <Sparkles size={20} strokeWidth={2} className="text-[var(--nv-gold)]" />
             <h2 className="text-[18px] font-bold text-[var(--nv-navy)]">
-              Opportunités
+              Backlog généré
             </h2>
           </div>
-          <NvEmptyState
-            icon={<Sparkles size={28} strokeWidth={1.75} />}
-            title="Backlog Claude en attente"
-            description="La génération de backlog (S2-11) nécessite une clé Anthropic. Cette section affichera les opportunités prioritaires une fois disponible."
-          />
+          {data.audit.backlog ? (
+            <div className="rounded-lg border border-[var(--nv-border)] bg-white p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[16px] font-semibold text-[var(--nv-navy)]">
+                  {data.audit.backlog.count} actions générées
+                </p>
+                <NvButton asChild variant="primary" size="sm">
+                  <Link href={`/backlog?projectId=${data.project.id}`}>Voir le backlog</Link>
+                </NvButton>
+              </div>
+              <div className="flex gap-4 text-[14px]">
+                <span className="text-[var(--nv-text-secondary)]">
+                  P0: {data.audit.backlog.p0}
+                </span>
+                <span className="text-[var(--nv-text-secondary)]">
+                  P1: {data.audit.backlog.p1}
+                </span>
+                <span className="text-[var(--nv-text-secondary)]">
+                  P2: {data.audit.backlog.p2}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <NvEmptyState
+              icon={<Sparkles size={28} strokeWidth={1.75} />}
+              title="Aucun backlog généré"
+              description="Aucun backlog n'a été généré pour le dernier audit. Relance un audit pour obtenir des recommandations."
+            />
+          )}
         </div>
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Target size={20} strokeWidth={2} className="text-[var(--nv-gold)]" />
-          <h2 className="text-[18px] font-bold text-[var(--nv-navy)]">
-            Prochaines actions
-          </h2>
-        </div>
-        <NvEmptyState
-          icon={<Target size={28} strokeWidth={1.75} />}
-          title="Prompts Claude en attente"
-          description="Les 3 prompts prioritaires pour Claude Code seront affichés ici une fois le générateur de backlog (S2-11) livré."
-        />
       </div>
 
       <div className="flex items-center justify-center gap-4 border-t border-[var(--nv-border)] pt-8">

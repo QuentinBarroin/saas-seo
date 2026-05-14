@@ -14,7 +14,9 @@ export type AuditPhase =
   | 'serp'
   | 'competitors-detection'
   | 'content-gap'
+  | 'persist-findings'
   | 'score'
+  | 'backlog-generation'
   | 'finalize';
 
 export type AuditLogEntry = {
@@ -81,10 +83,23 @@ export async function replaceFindings(
   auditId: string,
   projectId: string,
   findings: FindingDraft[]
-): Promise<{ count: number }> {
-  await db.$transaction(async (tx) => {
+): Promise<
+  Array<{
+    id: string;
+    ruleId: string;
+    category: string;
+    severity: string;
+    title: string;
+    description: string;
+    pageUrl: string | null;
+    filePath: string | null;
+    evidence: unknown;
+  }>
+> {
+  return await db.$transaction(async (tx) => {
     await tx.finding.deleteMany({ where: { auditId } });
-    if (findings.length === 0) return;
+    if (findings.length === 0) return [];
+
     await tx.finding.createMany({
       data: findings.map((f) => ({
         projectId,
@@ -103,22 +118,48 @@ export async function replaceFindings(
         } as unknown as object,
       })),
     });
+
+    const persisted = await tx.finding.findMany({
+      where: { auditId },
+      select: {
+        id: true,
+        rule: true,
+        category: true,
+        severity: true,
+        title: true,
+        description: true,
+        pageUrl: true,
+        filePath: true,
+        evidence: true,
+      },
+    });
+
+    return persisted.map((f) => ({
+      id: f.id,
+      ruleId: f.rule,
+      category: f.category,
+      severity: f.severity,
+      title: f.title,
+      description: f.description,
+      pageUrl: f.pageUrl,
+      filePath: f.filePath,
+      evidence: f.evidence,
+    }));
   });
-  return { count: findings.length };
 }
 
 export type FinalizePayload = {
   findings: FindingDraft[];
   score: ScoreBreakdown;
+  backlog?: object;
 };
 
-/** Étape `finalize` : persiste findings + scores + status='done' + findingsJson snapshot. */
+/** Étape `finalize` : persiste scores + status='done' + findingsJson + backlogJson snapshot. */
 export async function finalizeAudit(
   auditId: string,
   projectId: string,
   payload: FinalizePayload
 ): Promise<void> {
-  await replaceFindings(auditId, projectId, payload.findings);
   await db.seoAudit.update({
     where: { id: auditId },
     data: {
@@ -131,6 +172,7 @@ export async function finalizeAudit(
       conversionScore: payload.score.perCategory.conversion,
       geoScore: payload.score.perCategory.geo,
       findingsJson: payload.findings as unknown as object,
+      backlogJson: payload.backlog ?? ([] as unknown as object),
     },
   });
 }

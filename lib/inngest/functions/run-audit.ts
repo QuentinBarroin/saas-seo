@@ -12,6 +12,7 @@ import {
   failAudit,
   finalizeAudit,
   markAuditRunning,
+  replaceFindings,
 } from '@/lib/audits/persist';
 import { getDataForSeoCredentials } from '@/lib/projects/integrations';
 import { fetchSerpLive } from '@/lib/connectors/dataforseo';
@@ -19,6 +20,8 @@ import { runSerpStep } from '@/lib/serp/run-step';
 import { replaceSerpForAudit } from '@/lib/audits/persist-serp';
 import { detectCompetitorsFromSerp } from '@/lib/competitors/detect-from-serp';
 import { generateContentGapRecommendations } from '@/lib/content-gap/generate-recommendations';
+import { generateBacklog } from '@/lib/backlog/generate';
+import { replaceBacklogForAudit } from '@/lib/audits/persist-backlog';
 import { inngest } from '../client';
 
 function mapMarket(market: string): { locationCode: number; languageCode: string } {
@@ -27,8 +30,9 @@ function mapMarket(market: string): { locationCode: number; languageCode: string
 }
 
 /**
- * Job d'audit principal (S1-07). Orchestre :
- *  init → crawl → findings-crawler + findings-geo → serp → score → finalize.
+ * Job d'audit principal (S1-07 + S2-11). Orchestre :
+ *  init → crawl → findings-* → serp → competitors-detection → content-gap
+ *  → persist-findings → score → backlog-generation → finalize.
  *
  * **MVP scope** : crawler-only. La step `repo-scan` (S1-05) consomme un chemin
  * local sur la machine de l'auditeur — pas adapté à un exécution Inngest cloud
@@ -40,6 +44,7 @@ function mapMarket(market: string): { locationCode: number; languageCode: string
  * `replaceFindings` fait DELETE-then-INSERT par auditId → rejouer la finalisation
  * n'introduit pas de doublons. Step `serp` (S2-05) écrit en DELETE-then-INSERT
  * par fenêtre temporelle, safe en retry grâce à concurrence Inngest limit=1 par projectId.
+ * `replaceBacklogForAudit` delete par projectId+status=todo, préserve les items finis.
  */
 export const runAudit = inngest.createFunction(
   {
@@ -276,13 +281,25 @@ export const runAudit = inngest.createFunction(
         }
       });
 
-      // ─── score ─────────────────────────────────────────────────────────
+      // ─── persist-findings : DELETE-then-INSERT findings avec IDs DB ────
       const all = [
         ...crawlerFindings,
         ...geoFindings,
         ...conversionFindings,
         ...architectureFindings,
       ];
+      const persistedFindings = await step.run('persist-findings', async () => {
+        const findings = await replaceFindings(auditId, projectId, all);
+        await appendAuditLog(auditId, {
+          phase: 'persist-findings',
+          at: new Date().toISOString(),
+          ok: true,
+          meta: { count: findings.length },
+        });
+        return findings;
+      });
+
+      // ─── score ─────────────────────────────────────────────────────────
       const score = await step.run('score', async () => {
         const s = computeScore(all);
         await appendAuditLog(auditId, {
@@ -294,9 +311,89 @@ export const runAudit = inngest.createFunction(
         return s;
       });
 
-      // ─── finalize : persist findings + scores + status='done' ─────────
+      // ─── backlog-generation (S2-11) ────────────────────────────────────
+      const backlogItems = await step.run('backlog-generation', async () => {
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+        if (!apiKey) {
+          await appendAuditLog(auditId, {
+            phase: 'backlog-generation',
+            at: new Date().toISOString(),
+            ok: true,
+            meta: { skipped: true, reason: 'no_api_key' },
+          });
+          return { skipped: true };
+        }
+
+        const env = getEnv();
+        const projectRecord = await db.seoProject.findUnique({
+          where: { id: projectId },
+          select: { name: true, domain: true, type: true, businessGoal: true, market: true },
+        });
+
+        if (!projectRecord) {
+          await appendAuditLog(auditId, {
+            phase: 'backlog-generation',
+            at: new Date().toISOString(),
+            ok: false,
+            error: 'project not found',
+          });
+          return { error: 'project not found' };
+        }
+
+        try {
+          const result = await generateBacklog({
+            project: projectRecord,
+            findings: persistedFindings,
+            maxBudgetUsd: env.MAX_ANTHROPIC_USD_PER_AUDIT,
+          });
+
+          if (!result.ok) {
+            await appendAuditLog(auditId, {
+              phase: 'backlog-generation',
+              at: new Date().toISOString(),
+              ok: false,
+              error: `${result.reason}: ${result.message}`,
+              meta: { costUsd: result.costUsd },
+            });
+            return { error: result.reason };
+          }
+
+          await replaceBacklogForAudit(auditId, projectId, result.items);
+
+          await appendAuditLog(auditId, {
+            phase: 'backlog-generation',
+            at: new Date().toISOString(),
+            ok: true,
+            meta: {
+              itemsCreated: result.items.length,
+              filteredCount: result.filteredCount,
+              costUsd: result.costUsd,
+              inputTokens: result.inputTokens,
+              outputTokens: result.outputTokens,
+              cachedTokens: result.cachedTokens,
+            },
+          });
+
+          return { items: result.items };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'unknown backlog error';
+          await appendAuditLog(auditId, {
+            phase: 'backlog-generation',
+            at: new Date().toISOString(),
+            ok: false,
+            error: message,
+          });
+          return { error: message };
+        }
+      });
+
+      // ─── finalize : scores + backlogJson snapshot + status='done' ─────
       await step.run('finalize', async () => {
-        await finalizeAudit(auditId, projectId, { findings: all, score });
+        const backlog =
+          backlogItems && 'items' in backlogItems
+            ? (backlogItems.items as unknown as object)
+            : undefined;
+        await finalizeAudit(auditId, projectId, { findings: all, score, backlog });
         await appendAuditLog(auditId, {
           phase: 'finalize',
           at: new Date().toISOString(),
