@@ -8,30 +8,37 @@
     "skippedByRobots": 0
   },
   "score": {
-    "global": 63.7,
+    "global": 63.4,
     "perCategory": {
       "technical": 0,
       "content": 97,
       "architecture": 100,
-      "conversion": 100,
+      "conversion": 97,
       "geo": 94
     }
   },
-  "findingsCount": 10,
+  "findingsCount": 11,
   "findingsBySeverity": {
     "critical": 4,
     "high": 1,
-    "medium": 5,
+    "medium": 6,
     "low": 0
   },
   "findingsByCategory": {
     "technical": 7,
     "content": 1,
     "architecture": 0,
-    "conversion": 0,
+    "conversion": 1,
     "geo": 2
   },
   "findings": [
+    {
+      "ruleId": "CONV-missing-cta",
+      "severity": "medium",
+      "category": "conversion",
+      "confidence": "certain",
+      "ref": "https://golden.example.com/"
+    },
     {
       "ruleId": "GEO-missing-organization-jsonld",
       "severity": "medium",

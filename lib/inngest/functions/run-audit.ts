@@ -4,6 +4,7 @@ import { crawl } from '@/lib/crawler';
 import type { CrawlResult } from '@/lib/crawler';
 import { detectFromCrawl } from '@/lib/scoring/detectors/crawler';
 import { detectGeo } from '@/lib/scoring/detectors/geo';
+import { detectConversion } from '@/lib/scoring/detectors/conversion';
 import { computeScore } from '@/lib/scoring/score';
 import {
   appendAuditLog,
@@ -108,6 +109,18 @@ export const runAudit = inngest.createFunction(
         const f = detectGeo(crawlResultTyped, { projectType: project.type });
         await appendAuditLog(auditId, {
           phase: 'findings-geo',
+          at: new Date().toISOString(),
+          ok: true,
+          meta: { count: f.length },
+        });
+        return f;
+      });
+
+      // ─── findings-conversion (CONV-*) ──────────────────────────────────
+      const conversionFindings = await step.run('findings-conversion', async () => {
+        const f = detectConversion(crawlResultTyped);
+        await appendAuditLog(auditId, {
+          phase: 'findings-conversion',
           at: new Date().toISOString(),
           ok: true,
           meta: { count: f.length },
@@ -225,7 +238,7 @@ export const runAudit = inngest.createFunction(
       });
 
       // ─── score ─────────────────────────────────────────────────────────
-      const all = [...crawlerFindings, ...geoFindings];
+      const all = [...crawlerFindings, ...geoFindings, ...conversionFindings];
       const score = await step.run('score', async () => {
         const s = computeScore(all);
         await appendAuditLog(auditId, {

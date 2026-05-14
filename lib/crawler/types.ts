@@ -36,6 +36,12 @@ export type ParsedPage = {
   jsonLd: JsonLdBlock[];
   /** Liens internes (mêmes origine) extraits du <body>, normalisés et dédupliqués. */
   internalLinks: string[];
+  /** Signaux de détection CTA pour scoring conversion (traçables). */
+  ctaSignals: {
+    ctaLinks: number;
+    ctaButtons: number;
+    contactForms: number;
+  };
 };
 
 export type JsonLdBlock = {

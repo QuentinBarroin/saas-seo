@@ -5,6 +5,7 @@ import { crawl } from '@/lib/crawler';
 import type { CrawlResult } from '@/lib/crawler';
 import { detectFromCrawl } from '@/lib/scoring/detectors/crawler';
 import { detectGeo } from '@/lib/scoring/detectors/geo';
+import { detectConversion } from '@/lib/scoring/detectors/conversion';
 import { computeScore, type ScoreBreakdown } from '@/lib/scoring/score';
 import type { FindingDraft } from '@/lib/scoring/finding';
 import { GOLDEN_ORIGIN, goldenFetcher } from './golden-site-fixture';
@@ -34,7 +35,8 @@ describe('golden audit · v1', () => {
 
     const crawlerFindings = detectFromCrawl(result);
     const geoFindings = detectGeo(result, { projectType: 'saas' });
-    const findings = [...crawlerFindings, ...geoFindings];
+    const conversionFindings = detectConversion(result);
+    const findings = [...crawlerFindings, ...geoFindings, ...conversionFindings];
     const score = computeScore(findings);
 
     const snapshot = serializeGolden(result, findings, score);

@@ -131,3 +131,102 @@ describe('crawler/parse · internalLinks', () => {
     expect(r.internalLinks).toContain('https://example.com/up');
   });
 });
+
+describe('crawler/parse · ctaSignals', () => {
+  it('détecte mailto: link', () => {
+    const html = `<html><body><a href="mailto:contact@example.com">Email</a></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaLinks).toBe(1);
+    expect(r.ctaSignals.ctaButtons).toBe(0);
+    expect(r.ctaSignals.contactForms).toBe(0);
+  });
+
+  it('détecte tel: link', () => {
+    const html = `<html><body><a href="tel:+33123456789">Appeler</a></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaLinks).toBe(1);
+  });
+
+  it('détecte lien vers /contact', () => {
+    const html = `<html><body><a href="/contact">Contactez-nous</a></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaLinks).toBe(1);
+  });
+
+  it('détecte lien vers /demo', () => {
+    const html = `<html><body><a href="/demo">Réserver une démo</a></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaLinks).toBe(1);
+  });
+
+  it('détecte bouton avec classe btn-primary', () => {
+    const html = `<html><body><button class="btn-primary">Démarrer</button></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaButtons).toBe(1);
+    expect(r.ctaSignals.ctaLinks).toBe(0);
+  });
+
+  it('détecte lien avec classe cta', () => {
+    const html = `<html><body><a href="/foo" class="cta">Action</a></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaButtons).toBe(1);
+  });
+
+  it('détecte form avec input email', () => {
+    const html = `<html><body><form><input type="email"><button type="submit">Envoyer</button></form></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.contactForms).toBe(1);
+  });
+
+  it('détecte form avec textarea', () => {
+    const html = `<html><body><form><textarea name="message"></textarea></form></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.contactForms).toBe(1);
+  });
+
+  it('détecte form avec input name="email"', () => {
+    const html = `<html><body><form><input name="email"></form></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.contactForms).toBe(1);
+  });
+
+  it('page avec uniquement lien vers /about → pas de CTA', () => {
+    const html = `<html><body><a href="/about">À propos</a></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaLinks).toBe(0);
+    expect(r.ctaSignals.ctaButtons).toBe(0);
+    expect(r.ctaSignals.contactForms).toBe(0);
+  });
+
+  it('page vide → pas de CTA', () => {
+    const html = `<html><body></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaLinks).toBe(0);
+    expect(r.ctaSignals.ctaButtons).toBe(0);
+    expect(r.ctaSignals.contactForms).toBe(0);
+  });
+
+  it('détecte lien vers /devis', () => {
+    const html = `<html><body><a href="/devis">Demander un devis</a></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaLinks).toBe(1);
+  });
+
+  it('multiple signaux CTA dans la page', () => {
+    const html = `<html><body>
+      <a href="/contact">Contact</a>
+      <button class="nv-button">Démo</button>
+      <form><input type="email"></form>
+    </body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaLinks).toBe(1);
+    expect(r.ctaSignals.ctaButtons).toBe(1);
+    expect(r.ctaSignals.contactForms).toBe(1);
+  });
+
+  it('détecte classe nv-button (design system du repo)', () => {
+    const html = `<html><body><a href="/foo" class="nv-button">Action</a></body></html>`;
+    const r = parseHtml(html, BASE);
+    expect(r.ctaSignals.ctaButtons).toBe(1);
+  });
+});

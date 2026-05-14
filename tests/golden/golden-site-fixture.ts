@@ -7,12 +7,12 @@ import type { FetchResponse, Fetcher } from '@/lib/crawler/types';
  * détecteurs MVP. Pas de live site (instable) — fetcher mocké en mémoire
  * pour que le snapshot reste stable entre runs.
  *
- * Bugs attendus (10 findings au total) :
- *  - /                        → TECH-missing-canonical, GEO-missing-org/-saas
- *  - /pricing                 → TECH-missing-h1 (content)
- *  - /admin                   → TECH-private-page-indexable
- *  - /r/<24-alphanum>         → TECH-private-page-indexable (regex token)
- *  - /noindex-marketing       → TECH-noindex-on-public-page
+ * Bugs attendus (11 findings au total) :
+ *  - /                        → TECH-missing-canonical, GEO-missing-org/-saas, CONV-missing-cta
+ *  - /pricing                 → TECH-missing-h1 (content) — a un CTA (pas de CONV finding)
+ *  - /admin                   → TECH-private-page-indexable — skip CONV (sensitive URL)
+ *  - /r/<24-alphanum>         → TECH-private-page-indexable (regex token) — skip CONV
+ *  - /noindex-marketing       → TECH-noindex-on-public-page — skip CONV (non-indexable)
  *  - /broken                  → TECH-broken-status (404, court-circuite)
  *  - /sitemap.xml             → TECH-missing-sitemap (404, site-level)
  *  - /robots.txt              → TECH-missing-robots (404, site-level)
@@ -29,6 +29,7 @@ const HOME_HTML = `<!DOCTYPE html>
   <meta name="description" content="Page d'accueil du golden fixture.">
 </head><body>
   <h1>Bienvenue</h1>
+  <p>Contenu marketing sans CTA pour déclencher CONV-missing-cta.</p>
   <a href="/pricing">Pricing</a>
   <a href="/admin">Admin</a>
   <a href="${TOKEN_PATH}">Lien partagé</a>
@@ -43,6 +44,7 @@ const PRICING_HTML = `<!DOCTYPE html>
   <link rel="canonical" href="${GOLDEN_ORIGIN}/pricing">
 </head><body>
   <p>Aucun h1 ici — déclenche TECH-missing-h1.</p>
+  <a href="mailto:contact@golden.example.com">Contactez-nous</a>
   <a href="/">Retour accueil</a>
 </body></html>`;
 

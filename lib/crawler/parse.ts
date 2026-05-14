@@ -18,6 +18,7 @@ export function parseHtml(
   const { indexable, source: noindexSource } = computeIndexable($, headers);
   const jsonLd = extractJsonLd($);
   const internalLinks = extractInternalLinks($, pageUrl);
+  const ctaSignals = extractCtaSignals($, pageUrl);
 
   return {
     title,
@@ -28,6 +29,7 @@ export function parseHtml(
     noindexSource,
     jsonLd,
     internalLinks,
+    ctaSignals,
   };
 }
 
@@ -120,4 +122,77 @@ function extractInternalLinks($: cheerio.CheerioAPI, pageUrl: string): string[] 
     out.add(normalizeUrl(target));
   });
   return Array.from(out);
+}
+
+/**
+ * Détecte les signaux CTA (Call To Action) sur la page avec compteurs traçables.
+ *
+ * Heuristiques (du plus fort au plus faible) :
+ * 1. ctaLinks : `<a href>` matching `mailto:|tel:` OU path matching pattern CTA
+ * 2. ctaButtons : `<a>` ou `<button>` avec class matching pattern CTA
+ * 3. contactForms : `<form>` contenant `input[type="email"]` OU `input[name*="email"]` OU `textarea`
+ */
+function extractCtaSignals($: cheerio.CheerioAPI, pageUrl: string): ParsedPage['ctaSignals'] {
+  const CTA_PATH_RE =
+    /(contact|demo|démo|signup|register|inscri|essai|trial|book|devis|quote|start|onboard|nous-contacter|join|rejoindre|reserver|réserver|appel)/i;
+  const CTA_PROTOCOL_RE = /^(?:mailto:|tel:)/i;
+  const CTA_CLASS_RE = /\b(cta|btn-primary|button-primary|primary-btn|nv-button|bg-primary)\b/i;
+
+  let ctaLinks = 0;
+  let ctaButtons = 0;
+  let contactForms = 0;
+
+  let base: URL;
+  try {
+    base = new URL(pageUrl);
+  } catch {
+    return { ctaLinks: 0, ctaButtons: 0, contactForms: 0 };
+  }
+
+  $('a[href]').each((_, el) => {
+    const href = $(el).attr('href');
+    if (!href) return;
+
+    if (CTA_PROTOCOL_RE.test(href)) {
+      ctaLinks++;
+      return;
+    }
+
+    let target: URL;
+    try {
+      target = new URL(href, base);
+    } catch {
+      return;
+    }
+
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') return;
+
+    if (CTA_PATH_RE.test(target.pathname)) {
+      ctaLinks++;
+    }
+  });
+
+  $('a[class], button[class]').each((_, el) => {
+    const classes = $(el).attr('class') ?? '';
+    if (CTA_CLASS_RE.test(classes)) {
+      ctaButtons++;
+    }
+  });
+
+  $('form').each((_, form) => {
+    const $form = $(form);
+    const hasEmailInput = $form.find('input[type="email"]').length > 0;
+    const hasEmailNameInput =
+      $form.find('input').filter((_, inp) => {
+        const name = $(inp).attr('name') ?? '';
+        return /email/i.test(name);
+      }).length > 0;
+    const hasTextarea = $form.find('textarea').length > 0;
+
+    if (hasEmailInput || hasEmailNameInput || hasTextarea) {
+      contactForms++;
+    }
+  });
+
+  return { ctaLinks, ctaButtons, contactForms };
 }

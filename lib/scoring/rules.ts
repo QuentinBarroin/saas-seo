@@ -255,6 +255,21 @@ export const rules: Rule[] = [
       'Ajouter un composant `<JsonLd type="Organization" data={...} />` dans `app/layout.tsx` (pour le site) + un par page pilier (`SoftwareApplication`, `Article`, `FAQPage`).',
   },
 
+  // ─── CONV-* (conversion — détection CTA, tunnels) ────────────────────────
+  {
+    id: 'CONV-missing-cta',
+    category: 'conversion',
+    severity: 'medium',
+    title: 'Aucun CTA détecté sur la page',
+    description:
+      "La page n'a aucun appel à l'action visible (lien vers contact/démo/inscription, bouton primaire, mailto/tel). Le visiteur n'a pas de chemin de conversion clair.",
+    detector: 'crawler',
+    condition: 'page.ctaSignals total === 0 && page indexable et statusCode 200 et non-sensitive URL',
+    evidenceTemplate: 'URL: {url}',
+    recommendationTemplate:
+      "Ajouter un CTA primaire above-the-fold : bouton ou lien vers /contact, /demo, /inscription, /devis (selon le businessGoal du projet). Libellé orienté action ('Démarrer', 'Réserver une démo', 'Demander un devis'). Style visible (bouton coloré + position prominente).",
+  },
+
   // ─── GEO-* (crawler, HTML rendu — détection JSON-LD côté output) ─────────
   {
     id: 'GEO-missing-organization-jsonld',
