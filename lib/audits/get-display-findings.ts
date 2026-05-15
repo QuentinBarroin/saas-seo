@@ -1,7 +1,7 @@
 import type { FindingDraft } from '@/lib/scoring/finding';
 import type { RuleCategory, Severity } from '@/lib/scoring/rules';
 import type { AuditLogEntry } from './persist';
-import { getLatestAudit } from './persist';
+import { getAuditById, getLatestAudit } from './persist';
 
 export type AuditDisplay = {
   auditId: string;
@@ -89,11 +89,10 @@ function isAuditLogEntry(value: unknown): value is AuditLogEntry {
   );
 }
 
-/** Adapter DB Finding → FindingDraft (consommé par FindingsList). */
-export async function getDisplayFindings(projectId: string): Promise<AuditDisplay | null> {
-  const audit = await getLatestAudit(projectId);
-  if (!audit) return null;
+type AuditRow = NonNullable<Awaited<ReturnType<typeof getLatestAudit>>>;
 
+/** Adapter pur : row DB (getLatestAudit / getAuditById) → forme UI AuditDisplay. */
+function toAuditDisplay(audit: AuditRow): AuditDisplay {
   return {
     auditId: audit.id,
     startedAt: audit.startedAt,
@@ -109,4 +108,16 @@ export async function getDisplayFindings(projectId: string): Promise<AuditDispla
     runLog: parseRunLog(audit.runLog),
     findings: audit.findings.map(mapDbFindingToDraft),
   };
+}
+
+/** Dernier audit terminé d'un projet → forme UI (consommé par FindingsList). */
+export async function getDisplayFindings(projectId: string): Promise<AuditDisplay | null> {
+  const audit = await getLatestAudit(projectId);
+  return audit ? toAuditDisplay(audit) : null;
+}
+
+/** Audit précis par id → forme UI. Consultation d'un rapport depuis l'historique. */
+export async function getDisplayFindingsById(auditId: string): Promise<AuditDisplay | null> {
+  const audit = await getAuditById(auditId);
+  return audit ? toAuditDisplay(audit) : null;
 }

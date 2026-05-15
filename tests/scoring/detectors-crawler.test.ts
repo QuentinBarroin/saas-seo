@@ -74,6 +74,18 @@ describe('detectors/crawler · TECH-broken-status', () => {
     const ids = detectFromCrawl(crawl).map((f) => f.ruleId);
     expect(ids).not.toContain('TECH-broken-status');
   });
+
+  it('304 Not Modified ne déclenche PAS broken-status (réponse de cache normale)', () => {
+    const crawl = mkCrawl([mkBrokenPage(`${ORIGIN}/cached`, 304)]);
+    const ids = detectFromCrawl(crawl).map((f) => f.ruleId);
+    expect(ids).not.toContain('TECH-broken-status');
+  });
+
+  it('détecte une 500 (5xx)', () => {
+    const crawl = mkCrawl([mkBrokenPage(`${ORIGIN}/boom`, 500)]);
+    const ids = detectFromCrawl(crawl).map((f) => f.ruleId);
+    expect(ids).toContain('TECH-broken-status');
+  });
 });
 
 describe('detectors/crawler · TECH-missing-title/description/h1/canonical', () => {

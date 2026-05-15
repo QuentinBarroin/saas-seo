@@ -2,8 +2,6 @@ import type { CrawlResult, CrawledPage } from '@/lib/crawler/types';
 import { buildFinding, type FindingDraft } from '../finding';
 import { SENSITIVE_URL_PATTERN } from '../url-patterns';
 
-const REDIRECT_CODES = new Set([301, 302, 307, 308]);
-
 export type DetectorOptions = {
   /** Origine du site (utilisée pour TECH-noindex-on-public-page). */
   origin?: string;
@@ -27,8 +25,10 @@ export function detectFromCrawl(crawl: CrawlResult, opts: DetectorOptions = {}):
 function detectPage(page: CrawledPage, opts: DetectorOptions): FindingDraft[] {
   const out: FindingDraft[] = [];
 
-  // TECH-broken-status — status non 2xx/3xx
-  if (page.statusCode !== 0 && page.statusCode !== 200 && !REDIRECT_CODES.has(page.statusCode)) {
+  // TECH-broken-status — uniquement 4xx / 5xx. Un 2xx, un 3xx (redirect OU
+  // 304 Not Modified) ou un statusCode 0 (erreur réseau, traitée ailleurs) ne
+  // sont pas des pages « cassées ».
+  if (page.statusCode >= 400) {
     out.push(
       buildFinding('TECH-broken-status', {
         url: page.url,

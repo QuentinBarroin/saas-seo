@@ -27,10 +27,9 @@
 | PATCH | `/api/projects/[id]` | user | Modifier projet | S0-07 |
 | POST | `/api/projects/[id]/audits` | user | Lancer un audit (déclenche Inngest) | S1-07 |
 | GET | `/api/audits/[id]` | user | Récupérer un audit | S1-07 |
-| GET | `/api/integrations/google` | user | Démarrer OAuth Google | S2-01 |
-| GET | `/api/integrations/google/callback` | public (state) | Callback OAuth | S2-01 |
-| GET | `/api/integrations/gsc/properties` | user | Lister propriétés GSC | S2-02 |
-| POST | `/api/integrations/gsc/associate` | user | Associer propriété→projet | S2-02 |
+| GET | `/api/integrations/google` | user | Démarrer OAuth Google (state anti-CSRF) | S2-01 |
+| GET | `/api/integrations/google/callback` | user | Callback OAuth — stocke le refresh token chiffré | S2-01 |
+| N/A | `/api/integrations/gsc/*` | N/A | S2-02 : la liste des propriétés est chargée côté Server Component (`lib/gsc/list-properties.ts`) ; l'association et la déconnexion passent par des Server Actions (`app/(app)/settings/integrations/actions.ts`) — cohérent avec le pattern des formulaires du repo | S2-02 |
 | POST | `/api/integrations/dataforseo` | user | Sauver creds DataForSEO | S2-04 |
 | N/A | `/api/keywords` | N/A | S2-07 utilise des Server Actions (`app/(app)/keywords/actions.ts`) plutôt qu'un endpoint HTTP — cohérent avec le pattern des autres formulaires du repo (voir `app/login/actions.ts`, `app/(app)/settings/integrations/actions.ts`) | S2-07 |
 | GET | `/api/backlog/[projectId]/export?format=md` | user | Export backlog Markdown | S2-12 |

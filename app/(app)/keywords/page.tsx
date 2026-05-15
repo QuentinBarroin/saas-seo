@@ -3,6 +3,7 @@ import { NvPageHeader, NvCard, NvEmptyState, NvKPIBlock } from '@/components/nv'
 import { getKeywordsPageData } from '@/lib/keywords/get-page-data';
 import { KeywordsBulkForm } from './keywords-bulk-form';
 import { KeywordRow } from './keyword-row';
+import { SeedSuggestions } from './seed-suggestions';
 
 type Props = {
   searchParams: Promise<{ projectId?: string }>;
@@ -41,13 +42,22 @@ export default async function KeywordsPage({ searchParams }: Props) {
 
   if (data.keywords.length === 0) {
     return (
-      <div>
+      <div className="space-y-6">
         <NvPageHeader title={`Keywords — ${data.project.name}`} />
         <NvEmptyState
           icon={<Sparkles size={40} className="text-nv-gold" />}
           title="Aucun keyword"
-          description="Édite ton projet pour ajouter des seed keywords."
+          description="Ajoute des seed keywords pour démarrer — saisis-les via l'édition du projet, ou laisse Claude t'en suggérer ci-dessous."
         />
+        <NvCard>
+          <h2 className="text-[16px] font-bold tracking-tight text-[var(--nv-navy)]">
+            Ajouter des seed keywords
+          </h2>
+          <p className="mt-1 text-[13px] text-[var(--nv-text-muted)]">
+            Les seed keywords alimentent les clusters, le content gap et la SERP.
+          </p>
+          <SeedSuggestions projectId={projectId} existingQueries={[]} />
+        </NvCard>
       </div>
     );
   }
@@ -77,9 +87,18 @@ export default async function KeywordsPage({ searchParams }: Props) {
       </div>
 
       <NvCard className="overflow-hidden">
-        <div className="mb-3 flex items-center gap-2 px-4 pt-4">
-          <Tag size={20} className="text-nv-gold" />
-          <h3 className="text-sm font-semibold text-nv-navy">Édition des keywords</h3>
+        <div className="mb-3 px-4 pt-4">
+          <div className="flex items-center gap-2">
+            <Tag size={20} className="text-nv-gold" />
+            <h3 className="text-sm font-semibold text-nv-navy">Édition des keywords</h3>
+          </div>
+          {!data.hasGscData ? (
+            <p className="mt-1.5 text-xs text-gray-500">
+              Aucune donnée Google Search Console importée. Connecte GSC dans Réglages →
+              Intégrations, puis relance un audit pour peupler les colonnes clics / impressions /
+              CTR / position.
+            </p>
+          ) : null}
         </div>
 
         <div className="overflow-x-auto">
@@ -88,6 +107,18 @@ export default async function KeywordsPage({ searchParams }: Props) {
               <tr>
                 <th className="p-2 text-left text-xs font-semibold uppercase text-gray-600">
                   Query
+                </th>
+                <th className="p-2 text-right text-xs font-semibold uppercase text-gray-600">
+                  Clics 90j
+                </th>
+                <th className="p-2 text-right text-xs font-semibold uppercase text-gray-600">
+                  Impr.
+                </th>
+                <th className="p-2 text-right text-xs font-semibold uppercase text-gray-600">
+                  CTR
+                </th>
+                <th className="p-2 text-right text-xs font-semibold uppercase text-gray-600">
+                  Pos.
                 </th>
                 <th className="p-2 text-left text-xs font-semibold uppercase text-gray-600">
                   Cluster / Intent / Money

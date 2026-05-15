@@ -10,12 +10,17 @@ vi.mock('@/lib/db', () => ({
     keyword: {
       findMany: vi.fn(),
     },
+    gscQueryStat: {
+      findMany: vi.fn(),
+    },
   },
 }));
 
 describe('getKeywordsPageData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Par défaut : aucune donnée GSC importée.
+    vi.mocked(db.gscQueryStat.findMany).mockResolvedValue([] as never);
   });
 
   it('returns null if project not found', async () => {
@@ -44,6 +49,7 @@ describe('getKeywordsPageData', () => {
       project: { id: 'proj-123', name: 'Test Project' },
       keywords: [],
       existingClusters: [],
+      hasGscData: false,
     });
   });
 
@@ -94,9 +100,35 @@ describe('getKeywordsPageData', () => {
       project: { id: 'proj-456', name: 'Another Project' },
       keywords: expect.any(Array),
       existingClusters: ['SEO', 'Services'],
+      hasGscData: false,
     });
 
     expect(result?.keywords).toHaveLength(4);
+  });
+
+  it('joint les métriques GSC aux keywords seed (insensible à la casse)', async () => {
+    vi.mocked(db.seoProject.findUnique).mockResolvedValue({
+      id: 'proj-gsc',
+      name: 'GSC Project',
+    } as never);
+
+    vi.mocked(db.keyword.findMany).mockResolvedValue([
+      { id: 'kw-1', query: 'Audit SEO', cluster: null, intent: null, isMoneyKeyword: false, source: 'seed' },
+      { id: 'kw-2', query: 'consultant', cluster: null, intent: null, isMoneyKeyword: false, source: 'seed' },
+    ] as never);
+
+    vi.mocked(db.gscQueryStat.findMany).mockResolvedValue([
+      { query: 'audit seo', clicks: 10, impressions: 100, position: 4 },
+      { query: 'audit seo', clicks: 5, impressions: 100, position: 8 },
+    ] as never);
+
+    const result = await getKeywordsPageData('proj-gsc');
+
+    expect(result?.hasGscData).toBe(true);
+    const matched = result?.keywords.find((k) => k.id === 'kw-1');
+    expect(matched?.gsc).toEqual({ clicks: 15, impressions: 200, ctr: 15 / 200, position: 6 });
+    const unmatched = result?.keywords.find((k) => k.id === 'kw-2');
+    expect(unmatched?.gsc).toBeNull();
   });
 
   it('returns keywords ordered by isMoneyKeyword desc, cluster asc, query asc', async () => {

@@ -3,7 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { testCredentials, type TestCredentialsResult } from '@/lib/connectors/dataforseo';
-import { setDataForSeoCredentials } from '@/lib/projects/integrations';
+import {
+  setDataForSeoCredentials,
+  setGscProperty,
+  disconnectGsc,
+} from '@/lib/projects/integrations';
 import { db } from '@/lib/db';
 
 const schema = z.object({
@@ -20,8 +24,6 @@ export type SaveDataForSeoState = {
     balance?: string;
   };
 };
-
-const INITIAL: SaveDataForSeoState = { status: 'idle' };
 
 export async function saveAndTestDataForSeoCredentials(
   _prev: SaveDataForSeoState,
@@ -75,4 +77,38 @@ export async function saveAndTestDataForSeoCredentials(
   };
 }
 
-export { INITIAL as INITIAL_DATAFORSEO_STATE };
+/* ─── GSC (S2-02) ───────────────────────────────────────────────────────
+ * Le flow OAuth lui-même passe par des routes HTTP (redirections navigateur,
+ * impossibles en Server Action). L'association de propriété et la déconnexion
+ * sont des Server Actions — cohérent avec le pattern des formulaires du repo.
+ */
+
+const gscPropertySchema = z.object({
+  projectId: z.string().cuid('Invalid project id'),
+  siteUrl: z.string().trim().min(1, 'Propriété requise'),
+});
+
+/** Associe une propriété GSC au projet (formulaire `<select>` simple). */
+export async function associateGscPropertyAction(formData: FormData): Promise<void> {
+  const parsed = gscPropertySchema.safeParse({
+    projectId: formData.get('projectId'),
+    siteUrl: formData.get('siteUrl'),
+  });
+  if (!parsed.success) return;
+
+  await setGscProperty(parsed.data.projectId, parsed.data.siteUrl);
+  revalidatePath('/settings/integrations');
+}
+
+const gscDisconnectSchema = z.object({
+  projectId: z.string().cuid('Invalid project id'),
+});
+
+/** Supprime la connexion GSC du projet (refresh token + propriété). */
+export async function disconnectGscAction(formData: FormData): Promise<void> {
+  const parsed = gscDisconnectSchema.safeParse({ projectId: formData.get('projectId') });
+  if (!parsed.success) return;
+
+  await disconnectGsc(parsed.data.projectId);
+  revalidatePath('/settings/integrations');
+}

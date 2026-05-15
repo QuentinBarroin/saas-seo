@@ -52,11 +52,11 @@ export const rules: Rule[] = [
     id: 'TECH-broken-status',
     category: 'technical',
     severity: 'critical',
-    title: 'Page renvoie un code non-200',
+    title: 'Page renvoie un code 4xx/5xx',
     description:
-      "Une page interne renvoie un statut HTTP autre que 200 (4xx/5xx) — elle ne sera pas indexée et casse l'expérience utilisateur.",
+      "Une page interne renvoie un statut HTTP 4xx ou 5xx — elle ne sera pas indexée et casse l'expérience utilisateur.",
     detector: 'crawler',
-    condition: 'page.statusCode !== 200 && page.statusCode !== 301 && page.statusCode !== 308',
+    condition: 'page.statusCode >= 400',
     evidenceTemplate: 'URL: {url} · Status: {statusCode}',
     recommendationTemplate:
       "Restaurer la page (200 OK) ou la rediriger (301) vers une cible pertinente. Si la page n'existe plus, ajouter une redirection 301 vers la page la plus proche thématiquement.",

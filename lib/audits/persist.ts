@@ -11,6 +11,7 @@ export type AuditPhase =
   | 'findings-geo'
   | 'findings-conversion'
   | 'findings-architecture'
+  | 'import-gsc'
   | 'serp'
   | 'competitors-detection'
   | 'content-gap'
@@ -191,35 +192,94 @@ export async function failAudit(auditId: string, error: string): Promise<void> {
   });
 }
 
+/** Select partagé : tout ce qu'il faut pour afficher le détail d'un audit. */
+const AUDIT_DISPLAY_SELECT = {
+  id: true,
+  startedAt: true,
+  finishedAt: true,
+  runLog: true,
+  globalScore: true,
+  technicalScore: true,
+  contentScore: true,
+  architectureScore: true,
+  conversionScore: true,
+  geoScore: true,
+  findings: {
+    select: {
+      id: true,
+      rule: true,
+      category: true,
+      severity: true,
+      title: true,
+      description: true,
+      pageUrl: true,
+      filePath: true,
+      evidence: true,
+    },
+  },
+} as const;
+
 /** Récupère le dernier audit terminé (status done) d'un projet. */
 export async function getLatestAudit(projectId: string) {
   return db.seoAudit.findFirst({
     where: { projectId, status: 'done' },
     orderBy: { finishedAt: 'desc' },
+    select: AUDIT_DISPLAY_SELECT,
+  });
+}
+
+/** Récupère un audit précis par son id (tous statuts). Même shape que getLatestAudit. */
+export async function getAuditById(auditId: string) {
+  return db.seoAudit.findUnique({
+    where: { id: auditId },
+    select: AUDIT_DISPLAY_SELECT,
+  });
+}
+
+/**
+ * Audit `pending`/`running` le plus récent d'un projet, ou null.
+ * `runLog` inclus pour afficher la progression des étapes en temps réel.
+ */
+export async function getActiveAudit(projectId: string) {
+  return db.seoAudit.findFirst({
+    where: { projectId, status: { in: ['pending', 'running'] } },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, status: true, createdAt: true, startedAt: true, runLog: true },
+  });
+}
+
+export type AuditSummary = {
+  id: string;
+  status: string;
+  createdAt: Date;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  globalScore: number | null;
+  findingsCount: number;
+};
+
+/** Liste tous les audits d'un projet (récents d'abord) — vue historique. */
+export async function listAuditsForProject(projectId: string): Promise<AuditSummary[]> {
+  const audits = await db.seoAudit.findMany({
+    where: { projectId },
+    orderBy: { createdAt: 'desc' },
     select: {
       id: true,
+      status: true,
+      createdAt: true,
       startedAt: true,
       finishedAt: true,
-      runLog: true,
       globalScore: true,
-      technicalScore: true,
-      contentScore: true,
-      architectureScore: true,
-      conversionScore: true,
-      geoScore: true,
-      findings: {
-        select: {
-          id: true,
-          rule: true,
-          category: true,
-          severity: true,
-          title: true,
-          description: true,
-          pageUrl: true,
-          filePath: true,
-          evidence: true,
-        },
-      },
+      _count: { select: { findings: true } },
     },
   });
+  return audits.map((a) => ({
+    id: a.id,
+    status: a.status,
+    createdAt: a.createdAt,
+    startedAt: a.startedAt,
+    finishedAt: a.finishedAt,
+    globalScore: a.globalScore,
+    findingsCount: a._count.findings,
+  }));
 }

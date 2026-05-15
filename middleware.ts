@@ -4,6 +4,7 @@ import { updateSession } from '@/lib/supabase/middleware';
 const PROTECTED_PREFIXES = [
   '/dashboard',
   '/audit-technique',
+  '/audits',
   '/keywords',
   '/serp',
   '/content-gap',

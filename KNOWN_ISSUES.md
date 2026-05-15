@@ -21,6 +21,7 @@ Légende :
 |---|---|---|---|
 | 2026-05-13 | 🟡 | Auth Supabase non encore wirée + middleware protection `app/(app)/*` | S0-04 : Server Actions signIn/signOut + middleware racine + cookies HttpOnly via `@supabase/ssr` |
 | 2026-05-13 | 🟡 | Catalogue de règles SEO vide (`lib/scoring/rules.ts`) | S1-01 : 17 règles P0 (TECH-001→008, CODE-001→007, GEO-001/002) + pondérations + helpers + 13 tests catalogue |
+| 2026-05-15 | 🟠 | Faux positif `TECH-broken-status` : un 304 Not Modified comptait comme page cassée critical (constaté sur novera-talent.com/blog) | Détecteur `crawler.ts` : condition `statusCode >= 400` (4xx/5xx uniquement). Règle + titre corrigés. +2 tests de régression (304/500). Golden audit inchangé. |
 
 ## Comment ajouter une entrée
 

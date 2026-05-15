@@ -120,7 +120,9 @@ Stockage SERP DataForSEO. Permet le tracking dans le temps (`fetchedAt`).
 **Idempotence MVP** : la step Inngest `serp` (S2-05) écrit en DELETE-then-INSERT par `(projectId, fetchedAt >= audit.startedAt)`. La concurrence Inngest `limit: 1 par projectId` garantit l'absence d'écriture concurrente sur la fenêtre. Pas de FK `auditId` : le SERP est volontairement trackable dans le temps indépendamment des audits.
 
 ### `GscQueryStat`
-Stockage GSC : 1 ligne par (date, query, page).
+Stockage GSC : 1 ligne par (date, query, page). Alimenté par la step Inngest `import-gsc` (S2-03) sur une fenêtre de 90 jours glissants.
+
+**Idempotence (S2-03)** : `replaceGscStats` (`lib/audits/persist-gsc.ts`) fait DELETE-then-INSERT par `projectId` + fenêtre de dates `[startDate, endDate]`. Rejouer la step (retry Inngest) ne crée pas de doublons. Les inserts sont découpés en chunks de 5 000 lignes ; cap dur `MAX_GSC_ROWS_PER_AUDIT` (défaut 100 000). Pas de FK `auditId` : les stats GSC sont trackables dans le temps indépendamment des audits (même choix que `SerpResult`).
 
 ## Tables reportées
 

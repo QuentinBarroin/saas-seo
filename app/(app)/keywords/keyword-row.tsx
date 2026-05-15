@@ -5,6 +5,13 @@ import { Save } from 'lucide-react';
 import { NvInput } from '@/components/nv';
 import { updateKeywordAction } from './actions';
 
+type GscMetrics = {
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+};
+
 type KeywordData = {
   id: string;
   query: string;
@@ -12,7 +19,15 @@ type KeywordData = {
   intent: string | null;
   isMoneyKeyword: boolean;
   source: string | null;
+  gsc: GscMetrics | null;
 };
+
+/** Séparateur de milliers déterministe (évite toute divergence d'hydratation). */
+function fmtInt(n: number): string {
+  return Math.round(n)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
 
 type Props = {
   projectId: string;
@@ -43,9 +58,23 @@ export function KeywordRow({ projectId, keyword, existingClusters }: Props) {
     setPending(false);
   };
 
+  const gsc = keyword.gsc;
+
   return (
     <tr className="border-b border-nv-border">
       <td className="p-2 text-sm text-nv-navy">{keyword.query}</td>
+      <td className="nv-numeric p-2 text-right text-sm text-nv-navy">
+        {gsc ? fmtInt(gsc.clicks) : <span className="text-gray-300">—</span>}
+      </td>
+      <td className="nv-numeric p-2 text-right text-sm text-gray-500">
+        {gsc ? fmtInt(gsc.impressions) : <span className="text-gray-300">—</span>}
+      </td>
+      <td className="nv-numeric p-2 text-right text-sm text-gray-500">
+        {gsc ? `${(gsc.ctr * 100).toFixed(1)} %` : <span className="text-gray-300">—</span>}
+      </td>
+      <td className="nv-numeric p-2 text-right text-sm text-gray-500">
+        {gsc ? gsc.position.toFixed(1) : <span className="text-gray-300">—</span>}
+      </td>
       <td className="p-2">
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
           <NvInput

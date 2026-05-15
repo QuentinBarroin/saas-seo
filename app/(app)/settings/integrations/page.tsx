@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FolderPlus, Lock, KeyRound } from 'lucide-react';
+import { FolderPlus, Lock, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 import {
   NvButton,
   NvCard,
@@ -9,14 +9,49 @@ import {
 } from '@/components/nv';
 import { listProjects } from '@/lib/projects/list';
 import { getProjectIntegrations } from '@/lib/projects/integrations';
+import { listGscProperties } from '@/lib/gsc/list-properties';
 import { DataForSeoForm } from './dataforseo-form';
+import { GscCard } from './gsc-card';
 
 type PageProps = {
-  searchParams: Promise<{ projectId?: string }>;
+  searchParams: Promise<{ projectId?: string; gsc?: string }>;
 };
 
+/** Bandeau de retour du flow OAuth GSC (statut transmis par la route callback). */
+function GscStatusBanner({ status }: { status: string }) {
+  const success = status === 'connected';
+  const messages: Record<string, string> = {
+    connected: 'Compte Google connecté. Choisis la propriété à auditer ci-dessous.',
+    denied: 'Connexion Google annulée.',
+    error: 'Échec de la connexion Google. Réessaie depuis la carte ci-dessous.',
+    not_configured:
+      "App OAuth Google non configurée — renseigne GOOGLE_OAUTH_CLIENT_ID / SECRET dans .env.",
+    no_refresh_token:
+      "Google n'a pas renvoyé de refresh token. Révoque l'accès dans ton compte Google, puis reconnecte.",
+  };
+  const message = messages[status];
+  if (!message) return null;
+
+  return (
+    <div
+      className={`flex items-start gap-2 rounded-[var(--nv-radius-md)] border px-4 py-3 text-[13px] ${
+        success
+          ? 'border-[var(--nv-success)]/40 bg-[var(--nv-success-soft)] text-[var(--nv-success)]'
+          : 'border-[var(--nv-danger)]/40 bg-[var(--nv-danger-soft)] text-[var(--nv-danger)]'
+      }`}
+    >
+      {success ? (
+        <CheckCircle2 size={16} strokeWidth={2} className="mt-0.5 shrink-0" />
+      ) : (
+        <AlertCircle size={16} strokeWidth={2} className="mt-0.5 shrink-0" />
+      )}
+      <p>{message}</p>
+    </div>
+  );
+}
+
 export default async function IntegrationsPage({ searchParams }: PageProps) {
-  const { projectId } = await searchParams;
+  const { projectId, gsc: gscStatus } = await searchParams;
   const projects = await listProjects();
 
   if (projects.length === 0) {
@@ -44,12 +79,19 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
   const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? projects[0]!;
   const integrations = await getProjectIntegrations(selectedProject.id);
 
+  const oauthConfigured = Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID);
+  const gscProperties = integrations.gsc
+    ? await listGscProperties(selectedProject.id)
+    : null;
+
   return (
     <div className="space-y-8">
       <NvPageHeader
         title="Integrations"
         subtitle={`Configure les connecteurs du projet ${selectedProject.name} (creds chiffrés AES-256-GCM).`}
       />
+
+      {gscStatus ? <GscStatusBanner status={gscStatus} /> : null}
 
       {/* Project switcher si > 1 projet */}
       {projects.length > 1 ? (
@@ -101,25 +143,13 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
         />
       </NvCard>
 
-      {/* GSC — placeholder S2-01 */}
-      <NvCard padding="md">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[var(--nv-bg)] text-[var(--nv-text-muted)]">
-              <KeyRound size={18} strokeWidth={1.75} />
-            </div>
-            <div>
-              <h2 className="text-[18px] font-bold tracking-tight text-[var(--nv-navy)]">
-                Google Search Console
-              </h2>
-              <p className="mt-0.5 text-[13px] text-[var(--nv-text-muted)]">
-                OAuth Google + sélection de propriété. À implémenter (S2-01 / S2-02).
-              </p>
-            </div>
-          </div>
-          <NvStatusBadge variant="pending">Sprint 2</NvStatusBadge>
-        </div>
-      </NvCard>
+      {/* Google Search Console (S2-01/02/03) */}
+      <GscCard
+        projectId={selectedProject.id}
+        gsc={integrations.gsc ?? null}
+        oauthConfigured={oauthConfigured}
+        properties={gscProperties}
+      />
     </div>
   );
 }

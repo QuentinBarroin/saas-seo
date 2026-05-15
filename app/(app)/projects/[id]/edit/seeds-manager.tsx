@@ -3,7 +3,9 @@
 import { useActionState } from 'react';
 import { X, Plus } from 'lucide-react';
 import { NvButton, NvCard, NvField, NvTextarea } from '@/components/nv';
-import { addSeedKeywordsAction, removeSeedKeywordAction } from './actions';
+import { addSeedKeywordsAction } from '@/app/(app)/keywords/actions';
+import { SeedSuggestions } from '@/app/(app)/keywords/seed-suggestions';
+import { removeSeedKeywordAction } from './actions';
 
 type SeedKeyword = {
   id: string;
@@ -87,6 +89,11 @@ export function SeedsManager({ projectId, seedKeywords }: SeedsManagerProps) {
           </NvButton>
         </div>
       </form>
+
+      <SeedSuggestions
+        projectId={projectId}
+        existingQueries={seedKeywords.map((k) => k.query)}
+      />
     </NvCard>
   );
 }

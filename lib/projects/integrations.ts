@@ -18,7 +18,18 @@ export const projectIntegrationsSchema = z.object({
       password: z.string().min(1, 'Password DataForSEO requis'),
     })
     .optional(),
-  // gsc en S2-01 (refresh token + property url)
+  /**
+   * Google Search Console (S2-01/02/03). Le `refreshToken` OAuth permet de
+   * régénérer un access token à chaque audit ; `propertyUrl` est la propriété
+   * GSC choisie par l'utilisateur (ex: `sc-domain:example.com` ou
+   * `https://example.com/`).
+   */
+  gsc: z
+    .object({
+      refreshToken: z.string().min(1, 'Refresh token GSC requis'),
+      propertyUrl: z.string().min(1).optional(),
+    })
+    .optional(),
 });
 
 export type ProjectIntegrations = z.infer<typeof projectIntegrationsSchema>;
@@ -106,4 +117,45 @@ export async function getDataForSeoCredentials(
   const password = process.env.DATAFORSEO_PASSWORD;
   if (login && password) return { login, password };
   return null;
+}
+
+export type GscIntegration = NonNullable<ProjectIntegrations['gsc']>;
+
+/** Récupère l'intégration GSC d'un projet, ou null si non connecté. */
+export async function getGscIntegration(projectId: string): Promise<GscIntegration | null> {
+  const integrations = await getProjectIntegrations(projectId);
+  return integrations.gsc ?? null;
+}
+
+/**
+ * Enregistre/remplace le refresh token GSC après une boucle OAuth réussie.
+ * Préserve la propriété déjà associée (cas du re-consentement sur le même compte).
+ */
+export async function setGscConnection(projectId: string, refreshToken: string): Promise<void> {
+  const current = await getProjectIntegrations(projectId);
+  await setProjectIntegrations(projectId, {
+    ...current,
+    gsc: {
+      refreshToken,
+      ...(current.gsc?.propertyUrl ? { propertyUrl: current.gsc.propertyUrl } : {}),
+    },
+  });
+}
+
+/** Associe une propriété GSC au projet. Requiert une connexion OAuth existante. */
+export async function setGscProperty(projectId: string, propertyUrl: string): Promise<void> {
+  const current = await getProjectIntegrations(projectId);
+  if (!current.gsc) throw new Error('GSC non connecté pour ce projet');
+  await setProjectIntegrations(projectId, {
+    ...current,
+    gsc: { ...current.gsc, propertyUrl },
+  });
+}
+
+/** Supprime entièrement la connexion GSC (refresh token + propriété). */
+export async function disconnectGsc(projectId: string): Promise<void> {
+  const current = await getProjectIntegrations(projectId);
+  if (!current.gsc) return;
+  const { gsc: _gsc, ...rest } = current;
+  await setProjectIntegrations(projectId, rest);
 }

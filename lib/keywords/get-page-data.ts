@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { getGscMetricsByQuery, type GscQueryMetrics } from './gsc-metrics';
 
 export type KeywordsPageData = {
   project: { id: string; name: string };
@@ -9,8 +10,12 @@ export type KeywordsPageData = {
     intent: string | null;
     isMoneyKeyword: boolean;
     source: string | null;
+    /** Métriques Search Console 90 j, null si aucune donnée pour cette requête. */
+    gsc: GscQueryMetrics | null;
   }>;
   existingClusters: string[];
+  /** true si au moins une requête GSC a été importée pour le projet. */
+  hasGscData: boolean;
 };
 
 export async function getKeywordsPageData(
@@ -42,6 +47,8 @@ export async function getKeywordsPageData(
     ],
   });
 
+  const gscMetrics = await getGscMetricsByQuery(projectId);
+
   const clustersSet = new Set<string>();
   for (const kw of keywords) {
     if (kw.cluster) {
@@ -51,7 +58,11 @@ export async function getKeywordsPageData(
 
   return {
     project,
-    keywords,
+    keywords: keywords.map((kw) => ({
+      ...kw,
+      gsc: gscMetrics.get(kw.query.trim().toLowerCase()) ?? null,
+    })),
     existingClusters: Array.from(clustersSet).sort(),
+    hasGscData: gscMetrics.size > 0,
   };
 }

@@ -6,22 +6,13 @@ import { z } from 'zod';
 import { updateProject } from '@/lib/projects/update';
 import { deleteProject } from '@/lib/projects/delete';
 import { addCompetitor, removeCompetitor } from '@/lib/competitors/manage';
-import { addSeedKeywords, removeSeedKeyword } from '@/lib/keywords/manage';
+import { removeSeedKeyword } from '@/lib/keywords/manage';
 import { projectFormSchema } from '@/lib/projects/validation';
 
 export type ActionState = { error?: string; inserted?: number };
 
-function parseLines(input?: string): string[] {
-  if (!input) return [];
-  return Array.from(
-    new Set(
-      input
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0)
-    )
-  );
-}
+// Note : l'ajout et la suggestion IA de seed keywords vivent dans
+// `app/(app)/keywords/actions.ts` (partagés entre /keywords et cette page).
 
 const updateProjectFormSchema = projectFormSchema.extend({
   id: z.string().min(1),
@@ -125,37 +116,6 @@ export async function removeCompetitorAction(formData: FormData): Promise<void> 
   await removeCompetitor(parsed.data.id, parsed.data.projectId);
 
   revalidatePath(`/projects/${parsed.data.projectId}/edit`);
-}
-
-const addSeedKeywordsSchema = z.object({
-  projectId: z.string().min(1),
-  keywords: z.string().min(1, 'Au moins un mot-clé requis'),
-});
-
-export async function addSeedKeywordsAction(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  const parsed = addSeedKeywordsSchema.safeParse({
-    projectId: formData.get('projectId'),
-    keywords: formData.get('keywords'),
-  });
-
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return { error: first ? `${first.path.join('.')}: ${first.message}` : 'Validation échouée' };
-  }
-
-  const queries = parseLines(parsed.data.keywords);
-  if (queries.length === 0) {
-    return { error: 'Au moins un mot-clé requis' };
-  }
-
-  const result = await addSeedKeywords(parsed.data.projectId, queries);
-
-  revalidatePath(`/projects/${parsed.data.projectId}/edit`);
-
-  return { inserted: result.inserted };
 }
 
 const removeSeedKeywordSchema = z.object({

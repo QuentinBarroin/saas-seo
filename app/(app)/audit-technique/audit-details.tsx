@@ -1,16 +1,6 @@
 import { NvCard, NvStatusBadge } from '@/components/nv';
 import type { AuditDisplay } from '@/lib/audits/get-display-findings';
-
-const PHASE_LABEL: Record<string, string> = {
-  init: 'Initialisation',
-  crawl: 'Crawl',
-  'repo-scan': 'Scan repo',
-  'findings-crawler': 'Détecteurs crawler',
-  'findings-repo': 'Détecteurs repo',
-  'findings-geo': 'Détecteurs GEO',
-  score: 'Scoring',
-  finalize: 'Finalisation',
-};
+import { phaseLabel } from './phases';
 
 const CATEGORY_LABEL: Record<keyof AuditDisplay['perCategory'], string> = {
   technical: 'Technique',
@@ -90,7 +80,7 @@ export function AuditDetails({ audit }: Props) {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-[var(--nv-text)]">
-                      {PHASE_LABEL[entry.phase] ?? entry.phase}
+                      {phaseLabel(entry.phase)}
                     </p>
                     {entry.meta ? (
                       <p className="mt-0.5 text-[12px] text-[var(--nv-text-muted)]">
@@ -125,5 +115,7 @@ function formatMeta(meta: Record<string, unknown>): string {
 function formatValue(v: unknown): string {
   if (v === null) return '—';
   if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(1);
+  // Défense : un objet imbriqué dans meta ne doit jamais s'afficher `[object Object]`.
+  if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
 }

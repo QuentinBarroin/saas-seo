@@ -1,18 +1,38 @@
 import Link from 'next/link';
-import { FolderSearch, Clock } from 'lucide-react';
+import { FolderSearch } from 'lucide-react';
 import { NvButton, NvCard, NvEmptyState, NvPageHeader } from '@/components/nv';
 import { FindingsList } from './findings-list';
 import { AuditDetails } from './audit-details';
-import { getDisplayFindings } from '@/lib/audits/get-display-findings';
-import { db } from '@/lib/db';
+import { AuditProgress } from './audit-progress';
+import { phaseLabel } from './phases';
+import {
+  getDisplayFindings,
+  getDisplayFindingsById,
+  parseRunLog,
+} from '@/lib/audits/get-display-findings';
+import { getActiveAudit } from '@/lib/audits/persist';
 import type { Severity } from '@/lib/scoring/rules';
 
 type PageProps = {
-  searchParams: Promise<{ projectId?: string }>;
+  searchParams: Promise<{ projectId?: string; auditId?: string }>;
 };
 
+function formatDateTime(d: Date): string {
+  return new Date(d).toLocaleString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatTime(d: Date): string {
+  return new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default async function AuditTechniquePage({ searchParams }: PageProps) {
-  const { projectId } = await searchParams;
+  const { projectId, auditId } = await searchParams;
 
   if (!projectId) {
     return (
@@ -35,40 +55,16 @@ export default async function AuditTechniquePage({ searchParams }: PageProps) {
     );
   }
 
-  const audit = await getDisplayFindings(projectId);
+  const activeAudit = await getActiveAudit(projectId);
+  const audit = auditId
+    ? await getDisplayFindingsById(auditId)
+    : await getDisplayFindings(projectId);
 
-  // Pas d'audit terminé : vérifier s'il y en a un en cours/pending.
-  if (!audit) {
-    const pending = await db.seoAudit.findFirst({
-      where: { projectId, status: { in: ['pending', 'running'] } },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, status: true, createdAt: true },
-    });
-
-    if (pending) {
-      return (
-        <div className="space-y-8">
-          <NvPageHeader
-            title="Audit technique"
-            subtitle="Audit en cours — rafraîchis dans quelques instants pour voir les findings."
-          />
-          <NvEmptyState
-            icon={<Clock size={28} strokeWidth={1.75} />}
-            title={`Audit ${pending.status === 'running' ? 'en cours' : 'en file d\'attente'}`}
-            description={`Démarré ${new Date(pending.createdAt).toLocaleTimeString('fr-FR')}. Le worker Inngest exécute le crawl + les détecteurs en arrière-plan.`}
-            primaryAction={
-              <NvButton asChild variant="secondary" size="md">
-                <Link href={`/audit-technique?projectId=${projectId}`}>Rafraîchir</Link>
-              </NvButton>
-            }
-          />
-        </div>
-      );
-    }
-
+  // Ni audit en cours, ni audit terminé : rien à montrer.
+  if (!activeAudit && !audit) {
     return (
       <div className="space-y-8">
-        <NvPageHeader title="Audit technique" subtitle="Aucun audit terminé pour ce projet." />
+        <NvPageHeader title="Audit technique" subtitle="Aucun audit pour ce projet." />
         <NvEmptyState
           icon={<FolderSearch size={28} strokeWidth={1.75} />}
           title="Aucun audit"
@@ -83,6 +79,27 @@ export default async function AuditTechniquePage({ searchParams }: PageProps) {
     );
   }
 
+  const progressBanner = activeAudit ? (
+    <AuditProgress
+      status={activeAudit.status}
+      startedLabel={formatTime(activeAudit.startedAt ?? activeAudit.createdAt)}
+      completedPhases={parseRunLog(activeAudit.runLog).map((e) => phaseLabel(e.phase))}
+    />
+  ) : null;
+
+  // Un audit tourne mais aucun audit terminé n'existe encore.
+  if (!audit) {
+    return (
+      <div className="space-y-8">
+        <NvPageHeader
+          title="Audit technique"
+          subtitle="Premier audit en cours — les findings s'afficheront ici dès qu'il est terminé."
+        />
+        {progressBanner}
+      </div>
+    );
+  }
+
   const breakdown: Record<Severity, number> = {
     critical: audit.findings.filter((f) => f.severity === 'critical').length,
     high: audit.findings.filter((f) => f.severity === 'high').length,
@@ -90,22 +107,47 @@ export default async function AuditTechniquePage({ searchParams }: PageProps) {
     low: audit.findings.filter((f) => f.severity === 'low').length,
   };
 
-  const finishedLabel = audit.finishedAt
-    ? new Date(audit.finishedAt).toLocaleString('fr-FR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '—';
+  const finishedLabel = audit.finishedAt ? formatDateTime(audit.finishedAt) : '—';
+  const viewingHistorical = Boolean(auditId);
 
   return (
     <div className="space-y-8">
       <NvPageHeader
         title="Audit technique"
-        subtitle={`${audit.findings.length} finding${audit.findings.length > 1 ? 's' : ''} · dernier audit le ${finishedLabel}`}
+        subtitle={`${audit.findings.length} finding${audit.findings.length > 1 ? 's' : ''} · ${
+          viewingHistorical ? 'audit du' : 'dernier audit le'
+        } ${finishedLabel}`}
       />
+
+      {progressBanner}
+
+      {viewingHistorical ? (
+        <p className="text-[13px] text-[var(--nv-text-muted)]">
+          Tu consultes un audit de l&apos;historique.{' '}
+          <Link
+            href={`/audit-technique?projectId=${projectId}`}
+            className="nv-focus-ring rounded-[4px] font-medium text-[var(--nv-navy)] underline underline-offset-2"
+          >
+            Voir le dernier audit
+          </Link>
+          {' · '}
+          <Link
+            href={`/audits?projectId=${projectId}`}
+            className="nv-focus-ring rounded-[4px] font-medium text-[var(--nv-navy)] underline underline-offset-2"
+          >
+            Historique
+          </Link>
+        </p>
+      ) : (
+        <p className="text-[13px] text-[var(--nv-text-muted)]">
+          <Link
+            href={`/audits?projectId=${projectId}`}
+            className="nv-focus-ring rounded-[4px] font-medium text-[var(--nv-navy)] underline underline-offset-2"
+          >
+            Voir l&apos;historique des audits
+          </Link>
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <NvCard padding="sm">

@@ -54,7 +54,7 @@ pnpm prisma:migrate
 pnpm dev
 ```
 
-L'app tourne sur http://localhost:3000.
+L'app tourne sur http://localhost:3434 (port fixé dans le script `dev`, hors plage 3000-3011).
 
 ## 5. Lancer Inngest en local (jobs background)
 
@@ -89,4 +89,4 @@ pnpm test
 |---|---|---|
 | `Error: P1001 Can't reach database server` | DATABASE_URL pointe sur Supabase mais pas de réseau | Utiliser DIRECT_URL ou vérifier credentials |
 | `pnpm install` lent | Premier install, beaucoup de deps | Normal, ~1-2 min |
-| `next dev` n'ouvre pas le port | Conflit avec un autre projet sur :3000 | `pnpm dev -p 3001` |
+| `next dev` n'ouvre pas le port | Conflit avec un autre projet sur :3434 | `pnpm dev -- -p <autre>` (penser à aligner `GOOGLE_OAUTH_REDIRECT_URI`) |

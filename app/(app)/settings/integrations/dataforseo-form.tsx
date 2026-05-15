@@ -3,11 +3,11 @@
 import { useActionState } from 'react';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { NvButton, NvField, NvInput } from '@/components/nv';
-import {
-  saveAndTestDataForSeoCredentials,
-  INITIAL_DATAFORSEO_STATE,
-  type SaveDataForSeoState,
-} from './actions';
+import { saveAndTestDataForSeoCredentials, type SaveDataForSeoState } from './actions';
+
+// L'état initial vit côté client : un fichier `'use server'` ne peut exporter
+// que des fonctions async (pas d'objet), cf. invalid-use-server-value.
+const INITIAL_DATAFORSEO_STATE: SaveDataForSeoState = { status: 'idle' };
 
 type Props = {
   projectId: string;

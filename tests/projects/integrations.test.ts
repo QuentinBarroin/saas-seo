@@ -67,4 +67,30 @@ describe('integrations · serialize/deserialize round-trip', () => {
     // Mais les deux décryptent au même contenu
     expect(deserializeIntegrations(a)).toEqual(deserializeIntegrations(b));
   });
+
+  it('chiffre + déchiffre un bloc GSC (refresh token + propriété)', () => {
+    const input = {
+      gsc: { refreshToken: '1//refresh-token-xyz', propertyUrl: 'sc-domain:example.com' },
+    };
+    expect(deserializeIntegrations(serializeIntegrations(input))).toEqual(input);
+  });
+
+  it('chiffre un bloc GSC connecté sans propriété associée', () => {
+    const input = { gsc: { refreshToken: '1//refresh-only' } };
+    expect(deserializeIntegrations(serializeIntegrations(input))).toEqual(input);
+  });
+
+  it('rejette un bloc GSC sans refresh token', () => {
+    expect(() =>
+      serializeIntegrations({ gsc: { refreshToken: '' } } as never)
+    ).toThrow(/Refresh token GSC requis/);
+  });
+
+  it('round-trip DataForSEO + GSC combinés', () => {
+    const input = {
+      dataforseo: { login: 'u', password: 'p' },
+      gsc: { refreshToken: '1//rt', propertyUrl: 'https://example.com/' },
+    };
+    expect(deserializeIntegrations(serializeIntegrations(input))).toEqual(input);
+  });
 });

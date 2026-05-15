@@ -102,7 +102,7 @@ saas-audit-seo/
 
 ```bash
 pnpm install
-pnpm dev                            # localhost:3000
+pnpm dev                            # localhost:3434 (port fixé, hors plage 3000-3011)
 pnpm build
 pnpm lint
 pnpm typecheck

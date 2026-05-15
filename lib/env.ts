@@ -24,6 +24,7 @@ const envSchema = z
     MAX_KEYWORDS_PER_AUDIT: z.coerce.number().int().positive().default(50),
     MAX_DATAFORSEO_USD_PER_AUDIT: z.coerce.number().positive().default(0.5),
     MAX_ANTHROPIC_USD_PER_AUDIT: z.coerce.number().positive().default(0.5),
+    MAX_GSC_ROWS_PER_AUDIT: z.coerce.number().int().positive().default(100_000),
   })
   .refine(
     (data) =>

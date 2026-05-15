@@ -14,8 +14,16 @@ import {
   markAuditRunning,
   replaceFindings,
 } from '@/lib/audits/persist';
-import { getDataForSeoCredentials } from '@/lib/projects/integrations';
+import { getDataForSeoCredentials, getGscIntegration } from '@/lib/projects/integrations';
 import { fetchSerpLive } from '@/lib/connectors/dataforseo';
+import { refreshAccessToken, querySearchAnalytics } from '@/lib/connectors/gsc';
+import {
+  runGscImport,
+  computeGscDateRange,
+  mapGscRows,
+  GSC_DIMENSIONS,
+} from '@/lib/gsc/import-step';
+import { replaceGscStats } from '@/lib/audits/persist-gsc';
 import { runSerpStep } from '@/lib/serp/run-step';
 import { replaceSerpForAudit } from '@/lib/audits/persist-serp';
 import { detectCompetitorsFromSerp } from '@/lib/competitors/detect-from-serp';
@@ -145,6 +153,126 @@ export const runAudit = inngest.createFunction(
           meta: { count: f.length },
         });
         return f;
+      });
+
+      // ─── import-gsc (GSC 90j → GscQueryStat) ──────────────────────────
+      // Non-bloquant : un audit reste valide sans données GSC (le projet peut
+      // ne pas avoir connecté Google, ou l'app OAuth ne pas être provisionnée).
+      await step.run('import-gsc', async () => {
+        try {
+          const gsc = await getGscIntegration(projectId);
+          if (!gsc) {
+            await appendAuditLog(auditId, {
+              phase: 'import-gsc',
+              at: new Date().toISOString(),
+              ok: true,
+              meta: { skipped: true, reason: 'not_connected' },
+            });
+            return { skipped: true };
+          }
+          if (!gsc.propertyUrl) {
+            await appendAuditLog(auditId, {
+              phase: 'import-gsc',
+              at: new Date().toISOString(),
+              ok: true,
+              meta: { skipped: true, reason: 'no_property' },
+            });
+            return { skipped: true };
+          }
+
+          const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+          const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+          if (!clientId || !clientSecret) {
+            await appendAuditLog(auditId, {
+              phase: 'import-gsc',
+              at: new Date().toISOString(),
+              ok: true,
+              meta: { skipped: true, reason: 'no_oauth_app' },
+            });
+            return { skipped: true };
+          }
+
+          const token = await refreshAccessToken({
+            refreshToken: gsc.refreshToken,
+            clientId,
+            clientSecret,
+          });
+          if (!token.ok) {
+            await appendAuditLog(auditId, {
+              phase: 'import-gsc',
+              at: new Date().toISOString(),
+              ok: false,
+              error: `token refresh (${token.reason}) : ${token.message}`,
+            });
+            return { error: token.reason };
+          }
+
+          const accessToken = token.tokens.accessToken;
+          const propertyUrl = gsc.propertyUrl;
+          const env = getEnv();
+          const range = computeGscDateRange();
+
+          const outcome = await runGscImport(
+            {
+              startDate: range.startDate,
+              endDate: range.endDate,
+              maxRows: env.MAX_GSC_ROWS_PER_AUDIT,
+            },
+            async ({ startDate, endDate, startRow, rowLimit }) => {
+              const res = await querySearchAnalytics(accessToken, propertyUrl, {
+                startDate,
+                endDate,
+                dimensions: [...GSC_DIMENSIONS],
+                startRow,
+                rowLimit,
+              });
+              if (!res.ok) {
+                return { ok: false as const, message: `${res.reason}: ${res.message}` };
+              }
+              return { ok: true as const, rows: mapGscRows(res.rows) };
+            }
+          );
+
+          if (outcome.errored && outcome.rows.length === 0) {
+            await appendAuditLog(auditId, {
+              phase: 'import-gsc',
+              at: new Date().toISOString(),
+              ok: false,
+              error: outcome.errorMessage ?? 'import GSC échoué',
+            });
+            return { error: 'import_failed' };
+          }
+
+          const persisted = await replaceGscStats(projectId, range, outcome.rows);
+
+          await appendAuditLog(auditId, {
+            phase: 'import-gsc',
+            at: new Date().toISOString(),
+            ok: !outcome.errored,
+            ...(outcome.errored && outcome.errorMessage
+              ? { error: outcome.errorMessage }
+              : {}),
+            meta: {
+              rowsImported: persisted.inserted,
+              pagesFetched: outcome.pagesFetched,
+              cappedAtMaxRows: outcome.cappedAtMaxRows,
+              // Chaîne plate : le runLog de /audit-technique rend les valeurs de
+              // meta telles quelles — un objet imbriqué afficherait `[object Object]`.
+              dateRange: `${range.startDate} → ${range.endDate}`,
+            },
+          });
+
+          return { rowsImported: persisted.inserted };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'unknown import-gsc error';
+          await appendAuditLog(auditId, {
+            phase: 'import-gsc',
+            at: new Date().toISOString(),
+            ok: false,
+            error: message,
+          });
+          return { error: message };
+        }
       });
 
       // ─── serp (SERP live + PAA par keyword seed) ──────────────────────
