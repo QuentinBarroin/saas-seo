@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estimateCostUsd } from '@/lib/ai/claude';
+import { estimateCostUsd, extractJsonBlock } from '@/lib/ai/claude';
 
 describe('estimateCostUsd', () => {
   it('calculates cost for input tokens only', () => {
@@ -27,5 +27,30 @@ describe('estimateCostUsd', () => {
     const cost = estimateCostUsd(1000, 500, 200);
     expect(cost).toBeGreaterThan(0);
     expect(cost).toBeLessThan(0.01);
+  });
+});
+
+describe('extractJsonBlock', () => {
+  it('renvoie le JSON tel quel quand il est déjà pur', () => {
+    expect(extractJsonBlock('{"keywords":["a"]}')).toBe('{"keywords":["a"]}');
+  });
+
+  it('retire les fences markdown ```json', () => {
+    const fenced = '```json\n{"keywords":["a","b"]}\n```';
+    expect(JSON.parse(extractJsonBlock(fenced))).toEqual({ keywords: ['a', 'b'] });
+  });
+
+  it('retire la prose avant et après le JSON', () => {
+    const noisy = 'Voici la liste :\n{"keywords":["x"]}\nVoilà !';
+    expect(JSON.parse(extractJsonBlock(noisy))).toEqual({ keywords: ['x'] });
+  });
+
+  it('gère un objet JSON avec objets imbriqués', () => {
+    const nested = '```\n{"items":[{"a":1},{"b":2}]}\n```';
+    expect(JSON.parse(extractJsonBlock(nested))).toEqual({ items: [{ a: 1 }, { b: 2 }] });
+  });
+
+  it('renvoie le texte trimmé quand aucun objet JSON', () => {
+    expect(extractJsonBlock('  pas de json  ')).toBe('pas de json');
   });
 });

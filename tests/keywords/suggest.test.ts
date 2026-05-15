@@ -15,6 +15,11 @@ vi.mock('@/lib/ai/claude', () => {
     }),
     DEFAULT_MODEL: 'claude-sonnet-4-6',
     estimateCostUsd: vi.fn(() => 0.01),
+    extractJsonBlock: (text: string) => {
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}');
+      return start !== -1 && end > start ? text.slice(start, end + 1) : text.trim();
+    },
     setMockClient: (client: Partial<Anthropic>) => {
       mockClient = client;
     },

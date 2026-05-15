@@ -16,6 +16,11 @@ vi.mock('@/lib/ai/claude', () => {
     estimateCostUsd: vi.fn((input: number, cached: number, output: number) => {
       return (input / 1_000_000) * 3.0 + (cached / 1_000_000) * 0.3 + (output / 1_000_000) * 15.0;
     }),
+    extractJsonBlock: (text: string) => {
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}');
+      return start !== -1 && end > start ? text.slice(start, end + 1) : text.trim();
+    },
     setMockClient: (client: Partial<Anthropic>) => {
       mockClient = client;
     },

@@ -1,4 +1,4 @@
-import { getAnthropic, DEFAULT_MODEL, estimateCostUsd } from '@/lib/ai/claude';
+import { getAnthropic, DEFAULT_MODEL, estimateCostUsd, extractJsonBlock } from '@/lib/ai/claude';
 import {
   SUGGEST_KEYWORDS_SYSTEM_PROMPT,
   buildSuggestUserPrompt,
@@ -70,7 +70,7 @@ export async function suggestSeedKeywords(
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(content.text);
+      parsed = JSON.parse(extractJsonBlock(content.text));
     } catch {
       return { ok: false, reason: 'invalid_json', message: 'JSON Claude invalide' };
     }

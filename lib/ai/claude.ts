@@ -45,3 +45,16 @@ export function estimateCostUsd(
   const outputCost = (outputTokens / 1_000_000) * PRICING_USD_PER_M_TOKENS.output;
   return inputCost + cachedCost + outputCost;
 }
+
+/**
+ * Isole le bloc JSON d'une réponse Claude. Malgré une consigne « JSON strict »,
+ * Claude entoure parfois sa sortie de fences markdown (```json … ```) ou d'un
+ * peu de prose — on extrait du premier `{` au dernier `}` pour fiabiliser le
+ * `JSON.parse` côté appelant.
+ */
+export function extractJsonBlock(text: string): string {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start !== -1 && end > start) return text.slice(start, end + 1);
+  return text.trim();
+}

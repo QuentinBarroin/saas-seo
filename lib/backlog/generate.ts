@@ -1,4 +1,4 @@
-import { getAnthropic, DEFAULT_MODEL, estimateCostUsd } from '@/lib/ai/claude';
+import { getAnthropic, DEFAULT_MODEL, estimateCostUsd, extractJsonBlock } from '@/lib/ai/claude';
 import {
   type BacklogPromptInput,
   BACKLOG_SYSTEM_PROMPT,
@@ -128,7 +128,7 @@ export async function generateBacklog(
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(rawText);
+      parsed = JSON.parse(extractJsonBlock(rawText));
     } catch {
       return {
         ok: false,
