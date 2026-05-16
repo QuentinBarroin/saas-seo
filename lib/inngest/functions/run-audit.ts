@@ -1,11 +1,15 @@
+import { stat } from 'node:fs/promises';
 import { db } from '@/lib/db';
 import { getEnv } from '@/lib/env';
 import { crawl } from '@/lib/crawler';
 import type { CrawlResult } from '@/lib/crawler';
+import type { FindingDraft } from '@/lib/scoring/finding';
 import { detectFromCrawl } from '@/lib/scoring/detectors/crawler';
 import { detectGeo } from '@/lib/scoring/detectors/geo';
 import { detectConversion } from '@/lib/scoring/detectors/conversion';
 import { detectArchitecture } from '@/lib/scoring/detectors/architecture';
+import { detectFromRepo } from '@/lib/scoring/detectors/repo';
+import { scanRepo, isRemoteRepoUrl } from '@/lib/repo-scan';
 import { computeScore } from '@/lib/scoring/score';
 import {
   appendAuditLog,
@@ -39,14 +43,14 @@ function mapMarket(market: string): { locationCode: number; languageCode: string
 
 /**
  * Job d'audit principal (S1-07 + S2-11). Orchestre :
- *  init → crawl → findings-* → serp → competitors-detection → content-gap
- *  → persist-findings → score → backlog-generation → finalize.
+ *  init → crawl → findings-* → repo-scan → import-gsc → serp
+ *  → competitors-detection → content-gap → persist-findings → score
+ *  → backlog-generation → finalize.
  *
- * **MVP scope** : crawler-only. La step `repo-scan` (S1-05) consomme un chemin
- * local sur la machine de l'auditeur — pas adapté à un exécution Inngest cloud
- * sans clone shallow temporaire (à venir en Lot 1). Le user déclenche le
- * repo-scan séparément via une autre route (à venir) qui ré-utilise les mêmes
- * persisteurs.
+ * **repo-scan** (ADR-013) : scanne le code du repo Next.js pour les findings
+ * CODE-*. MVP = chemin local uniquement (`SeoProject.repoUrl` pointant un
+ * dossier) ; un repoUrl distant nécessiterait un clone + auth PAT (Q-009),
+ * reporté en Lot 1. Step non-bloquante : un audit reste valide sans repo.
  *
  * **Idempotence** : chaque step est isolée via `step.run` (retry safe).
  * `replaceFindings` fait DELETE-then-INSERT par auditId → rejouer la finalisation
@@ -75,7 +79,7 @@ export const runAudit = inngest.createFunction(
         });
         const p = await db.seoProject.findUnique({
           where: { id: projectId },
-          select: { id: true, domain: true, type: true },
+          select: { id: true, domain: true, type: true, repoUrl: true },
         });
         if (!p) throw new Error(`Project ${projectId} introuvable`);
         return p;
@@ -153,6 +157,86 @@ export const runAudit = inngest.createFunction(
           meta: { count: f.length },
         });
         return f;
+      });
+
+      // ─── repo-scan (CODE-* depuis le code du repo Next.js) ─────────────
+      // Non-bloquant. ADR-013 : MVP = chemin local uniquement ; un repoUrl
+      // distant (clone + PAT, Q-009) est reporté en Lot 1.
+      const repoFindings = await step.run('repo-scan', async () => {
+        try {
+          const repoUrl = project.repoUrl;
+          if (!repoUrl) {
+            await appendAuditLog(auditId, {
+              phase: 'repo-scan',
+              at: new Date().toISOString(),
+              ok: true,
+              meta: { skipped: true, reason: 'no_repo' },
+            });
+            return [] as FindingDraft[];
+          }
+          if (isRemoteRepoUrl(repoUrl)) {
+            await appendAuditLog(auditId, {
+              phase: 'repo-scan',
+              at: new Date().toISOString(),
+              ok: true,
+              meta: { skipped: true, reason: 'remote_repo_unsupported' },
+            });
+            return [] as FindingDraft[];
+          }
+
+          let isDir = false;
+          try {
+            isDir = (await stat(repoUrl)).isDirectory();
+          } catch {
+            isDir = false;
+          }
+          if (!isDir) {
+            await appendAuditLog(auditId, {
+              phase: 'repo-scan',
+              at: new Date().toISOString(),
+              ok: true,
+              meta: { skipped: true, reason: 'repo_path_not_found' },
+            });
+            return [] as FindingDraft[];
+          }
+
+          const scan = await scanRepo({ path: repoUrl });
+          if (!scan.isNextProject) {
+            await appendAuditLog(auditId, {
+              phase: 'repo-scan',
+              at: new Date().toISOString(),
+              ok: true,
+              meta: {
+                skipped: true,
+                reason: 'not_next_project',
+                filesScanned: scan.files.length,
+              },
+            });
+            return [] as FindingDraft[];
+          }
+
+          const f = detectFromRepo(scan);
+          await appendAuditLog(auditId, {
+            phase: 'repo-scan',
+            at: new Date().toISOString(),
+            ok: true,
+            meta: {
+              count: f.length,
+              filesScanned: scan.files.length,
+              routes: scan.routes.length,
+            },
+          });
+          return f;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'unknown repo-scan error';
+          await appendAuditLog(auditId, {
+            phase: 'repo-scan',
+            at: new Date().toISOString(),
+            ok: false,
+            error: message,
+          });
+          return [] as FindingDraft[];
+        }
       });
 
       // ─── import-gsc (GSC 90j → GscQueryStat) ──────────────────────────
@@ -415,6 +499,7 @@ export const runAudit = inngest.createFunction(
         ...geoFindings,
         ...conversionFindings,
         ...architectureFindings,
+        ...repoFindings,
       ];
       const persistedFindings = await step.run('persist-findings', async () => {
         const findings = await replaceFindings(auditId, projectId, all);

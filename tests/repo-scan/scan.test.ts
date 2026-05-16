@@ -1,8 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import path from 'node:path';
-import { scanRepo } from '@/lib/repo-scan';
+import { scanRepo, isRemoteRepoUrl } from '@/lib/repo-scan';
 
 const FIXTURE = path.resolve(__dirname, '../fixtures/repo-scan/sample-next-app');
+
+describe('repo-scan · isRemoteRepoUrl', () => {
+  it('reconnaît les URLs distantes (git / http / ssh)', () => {
+    for (const url of [
+      'https://github.com/acme/repo.git',
+      'http://gitlab.com/acme/repo',
+      'git@github.com:acme/repo.git',
+      'ssh://git@host/acme/repo',
+      'git://host/repo',
+    ]) {
+      expect(isRemoteRepoUrl(url)).toBe(true);
+    }
+  });
+
+  it('reconnaît les chemins locaux (Windows / POSIX / relatifs)', () => {
+    for (const p of ['C:\\dev\\shooting-pilot', '/home/q/projects/sp', './sp', '../sp']) {
+      expect(isRemoteRepoUrl(p)).toBe(false);
+    }
+  });
+});
 
 describe('repo-scan · scanRepo (end-to-end sur fixture)', () => {
   it('détecte un projet Next.js (deps + next.config.ts)', async () => {

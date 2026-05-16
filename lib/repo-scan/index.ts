@@ -68,4 +68,13 @@ export async function scanRepo(opts: ScanOptions): Promise<ScanResult> {
   };
 }
 
+/**
+ * Vrai si `repoUrl` est une URL distante (git/http) plutôt qu'un chemin local.
+ * Le scan repo (ADR-013) ne traite en MVP que les chemins locaux ; le clone
+ * d'un repo distant (auth PAT, cf. Q-009) est reporté en Lot 1.
+ */
+export function isRemoteRepoUrl(repoUrl: string): boolean {
+  return /^(https?:|git@|ssh:|git:)/i.test(repoUrl.trim());
+}
+
 export type { ScanOptions, ScanResult, RepoFile, AppRouterRoute } from './types';
