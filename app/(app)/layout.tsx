@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { href: '/keywords', label: 'Keywords' },
   { href: '/serp', label: 'SERP' },
   { href: '/content-gap', label: 'Content gap' },
+  { href: '/pages', label: 'Pages SEO' },
   { href: '/backlog', label: 'Backlog' },
   { href: '/settings/integrations', label: 'Settings' },
 ];
