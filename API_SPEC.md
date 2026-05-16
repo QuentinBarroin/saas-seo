@@ -32,7 +32,7 @@
 | N/A | `/api/integrations/gsc/*` | N/A | S2-02 : la liste des propriétés est chargée côté Server Component (`lib/gsc/list-properties.ts`) ; l'association et la déconnexion passent par des Server Actions (`app/(app)/settings/integrations/actions.ts`) — cohérent avec le pattern des formulaires du repo | S2-02 |
 | POST | `/api/integrations/dataforseo` | user | Sauver creds DataForSEO | S2-04 |
 | N/A | `/api/keywords` | N/A | S2-07 utilise des Server Actions (`app/(app)/keywords/actions.ts`) plutôt qu'un endpoint HTTP — cohérent avec le pattern des autres formulaires du repo (voir `app/login/actions.ts`, `app/(app)/settings/integrations/actions.ts`) | S2-07 |
-| GET | `/api/backlog/[projectId]/export?format=md` | user | Export backlog Markdown | S2-12 |
+| GET | `/api/backlog/[projectId]/export?format=md\|csv\|github\|linear` | user | Export backlog — Markdown, CSV générique, GitHub Issues (JSON), Linear (CSV import natif) ; défaut `md`, format inconnu → 400 | S2-12 / L1-10 |
 
 ## Format de réponse standard
 

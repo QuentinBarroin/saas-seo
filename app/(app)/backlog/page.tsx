@@ -7,6 +7,7 @@ import {
   NvEmptyState,
 } from '@/components/nv';
 import { BacklogDetailPanel } from './backlog-detail-panel';
+import { BacklogExportMenu } from './export-menu';
 
 function LinkButton({
   href,
@@ -133,15 +134,7 @@ export default async function BacklogPage({ searchParams }: PageProps) {
       <NvPageHeader
         title="Backlog"
         subtitle={data.project.name}
-        action={
-          <LinkButton
-            href={`/api/backlog/${projectId}/export?format=md`}
-            variant="secondary"
-            size="md"
-          >
-            Exporter en Markdown
-          </LinkButton>
-        }
+        action={<BacklogExportMenu projectId={projectId} />}
       />
 
       <div className="space-y-6 p-6">
