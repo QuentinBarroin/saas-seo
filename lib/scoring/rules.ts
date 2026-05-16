@@ -314,6 +314,78 @@ export const rules: Rule[] = [
     recommendationTemplate:
       "Ajouter au moins 1 lien interne depuis une page autorité (home, pillar de cluster, page d'index) vers cette page. Vérifier aussi le maillage thématique : la page devrait recevoir des liens depuis les pages du même cluster.",
   },
+  {
+    id: 'ARCH-internal-link-to-redirect',
+    category: 'architecture',
+    severity: 'medium',
+    title: 'Liens internes vers une URL qui redirige',
+    description:
+      "Au moins un lien interne pointe vers une URL qui répond en redirection 3xx au lieu de pointer directement vers la version finale. Chaque saut gaspille du budget de crawl et dilue l'équité de lien transmise.",
+    detector: 'architecture',
+    condition:
+      'an internal link target is a crawled URL whose url !== finalUrl (the URL redirects)',
+    evidenceTemplate:
+      'URL redirigée: {targetUrl} → {finalUrl} · {linkCount} lien(s) interne(s) depuis : {sourceUrls}',
+    recommendationTemplate:
+      "Mettre à jour les liens internes pour pointer directement vers {finalUrl} au lieu de {targetUrl}. En Next.js : vérifier les composants de navigation (header, footer, breadcrumb) et les `<Link>` codés en dur. Pages à corriger : {sourceUrls}.",
+  },
+  {
+    id: 'ARCH-canonical-mismatch',
+    category: 'architecture',
+    severity: 'high',
+    title: 'Canonical ne pointe pas sur la page elle-même',
+    description:
+      "La balise `<link rel=\"canonical\">` désigne une URL différente de la page courante. Google traite alors cette page comme un doublon de la cible et ne l'indexe pas comme version principale — perte de trafic si la canonical n'est pas intentionnelle.",
+    detector: 'architecture',
+    condition:
+      'page is 200 + indexable, declares a canonical link, and the resolved canonical URL differs from the page final URL',
+    evidenceTemplate: 'URL: {url} · Canonical déclarée: {canonical}',
+    recommendationTemplate:
+      "Vérifier si la canonical est intentionnelle (cas légitime : variantes de filtre ou de pagination consolidées vers une page mère). Sinon, corriger la balise pour qu'elle pointe sur la page elle-même. En Next.js : `export const metadata = { alternates: { canonical: '{url}' } }`.",
+  },
+  {
+    id: 'ARCH-canonical-target-invalid',
+    category: 'architecture',
+    severity: 'high',
+    title: 'Canonical pointe vers une URL cassée ou non-indexable',
+    description:
+      "La balise canonical pointe vers une URL qui a été crawlée mais répond en erreur (non-200) ou est en noindex. Google ignore alors la directive et choisit lui-même la version canonique — risque de doublon dans l'index et d'autorité diluée.",
+    detector: 'architecture',
+    condition:
+      'page declares a canonical link whose resolved target is a crawled page with statusCode !== 200 or indexable === false',
+    evidenceTemplate:
+      'URL: {url} · Canonical cassée: {canonical} (statut de la cible: {targetStatus})',
+    recommendationTemplate:
+      "Faire pointer la canonical vers une URL existante, en 200 OK et indexable. Si la cible n'existe plus, supprimer la balise (canonical sur la page elle-même) ou rediriger la page source vers une cible valide.",
+  },
+  {
+    id: 'ARCH-duplicate-title',
+    category: 'architecture',
+    severity: 'high',
+    title: 'Balise title identique sur plusieurs pages',
+    description:
+      "Plusieurs pages indexables partagent exactement le même `<title>`. Google peut n'en indexer qu'une seule ou les regrouper comme doublons — cannibalisation du trafic et signal de pertinence affaibli sur les requêtes ciblées.",
+    detector: 'architecture',
+    condition:
+      'two or more 200 + indexable pages share an identical non-empty <title>',
+    evidenceTemplate: 'Title dupliqué: "{title}" · {count} pages : {urls}',
+    recommendationTemplate:
+      "Différencier le title de chacune de ces {count} pages avec un élément unique (nom de cluster, variante de mot-clé, structure « Sujet | Différenciateur »). Pages concernées : {urls}.",
+  },
+  {
+    id: 'ARCH-duplicate-description',
+    category: 'architecture',
+    severity: 'medium',
+    title: 'Meta description identique sur plusieurs pages',
+    description:
+      "Plusieurs pages indexables partagent la même `<meta name=\"description\">`. Sans désindexation à la clé, mais les snippets SERP identiques affaiblissent le CTR et la différenciation perçue de chaque page.",
+    detector: 'architecture',
+    condition:
+      'two or more 200 + indexable pages share an identical non-empty meta description',
+    evidenceTemplate: 'Meta description dupliquée sur {count} pages : {urls}',
+    recommendationTemplate:
+      "Réécrire une meta description unique par page : verbe d'action + bénéfice principal + différenciateur (use case, persona, lieu). Pages concernées : {urls}.",
+  },
 ];
 
 export function getRule(id: string): Rule | undefined {

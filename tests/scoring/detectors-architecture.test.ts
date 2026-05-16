@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { detectArchitecture } from '@/lib/scoring/detectors/architecture';
 import { parseHtml } from '@/lib/crawler/parse';
 import type { CrawlResult, CrawledPage } from '@/lib/crawler/types';
+import type { FindingDraft } from '@/lib/scoring/finding';
 
 const ORIGIN = 'https://example.com';
 const NOW = new Date();
@@ -166,5 +167,203 @@ describe('detectors/architecture · ARCH-orphan-page', () => {
     );
     expect(findings).toHaveLength(1);
     expect(findings[0]!.evidence.url).toBe(`${ORIGIN}/page2`);
+  });
+});
+
+/** Page crawlée dont l'URL demandée redirige vers `finalUrl`. */
+function redirectingPage(url: string, finalUrl: string): CrawledPage {
+  return {
+    url,
+    finalUrl,
+    statusCode: 200,
+    fetchedAt: NOW,
+    contentType: 'text/html',
+    parsed: parseHtml('<html><body><h1>Final</h1></body></html>', finalUrl),
+  };
+}
+
+function byRule(findings: FindingDraft[], ruleId: string): FindingDraft[] {
+  return findings.filter((f) => f.ruleId === ruleId);
+}
+
+describe('detectors/architecture · ARCH-internal-link-to-redirect', () => {
+  it('lien interne vers une URL qui redirige - 1 finding', () => {
+    const homeHtml = `<html><body><h1>Home</h1><a href="/old">Old</a></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        redirectingPage(`${ORIGIN}/old`, `${ORIGIN}/new`),
+      ])
+    );
+    const redirectFindings = byRule(findings, 'ARCH-internal-link-to-redirect');
+    expect(redirectFindings).toHaveLength(1);
+    expect(redirectFindings[0]!.evidence.targetUrl).toBe(`${ORIGIN}/old`);
+    expect(redirectFindings[0]!.evidence.finalUrl).toBe(`${ORIGIN}/new`);
+    expect(redirectFindings[0]!.evidence.linkCount).toBe(1);
+  });
+
+  it('aucune redirection dans le crawl - 0 finding', () => {
+    const homeHtml = `<html><body><h1>Home</h1><a href="/about">About</a></body></html>`;
+    const aboutHtml = `<html><body><h1>About</h1><a href="/">Home</a></body></html>`;
+    const findings = detectArchitecture(
+      crawl([page(`${ORIGIN}/`, homeHtml), page(`${ORIGIN}/about`, aboutHtml)])
+    );
+    expect(byRule(findings, 'ARCH-internal-link-to-redirect')).toHaveLength(0);
+  });
+
+  it('lien pointant directement sur la version finale - 0 finding redirect', () => {
+    const homeHtml = `<html><body><h1>Home</h1><a href="/new">New</a></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        redirectingPage(`${ORIGIN}/old`, `${ORIGIN}/new`),
+        page(`${ORIGIN}/new`, `<html><body><h1>New</h1></body></html>`),
+      ])
+    );
+    expect(byRule(findings, 'ARCH-internal-link-to-redirect')).toHaveLength(0);
+  });
+
+  it('plusieurs pages liant la même URL redirigée - 1 finding groupé', () => {
+    const homeHtml = `<html><body><h1>Home</h1><a href="/old">Old</a></body></html>`;
+    const aboutHtml = `<html><body><h1>About</h1><a href="/old">Old</a></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        page(`${ORIGIN}/about`, aboutHtml),
+        redirectingPage(`${ORIGIN}/old`, `${ORIGIN}/new`),
+      ])
+    );
+    const redirectFindings = byRule(findings, 'ARCH-internal-link-to-redirect');
+    expect(redirectFindings).toHaveLength(1);
+    expect(redirectFindings[0]!.evidence.linkCount).toBe(2);
+  });
+});
+
+describe('detectors/architecture · ARCH-canonical-*', () => {
+  const homeHtml = `<html><body><h1>Home</h1></body></html>`;
+
+  it('canonical pointant vers une autre page - ARCH-canonical-mismatch', () => {
+    const pageHtml = `<html><head><link rel="canonical" href="${ORIGIN}/other"></head><body><h1>Page</h1></body></html>`;
+    const otherHtml = `<html><body><h1>Other</h1></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        page(`${ORIGIN}/page`, pageHtml),
+        page(`${ORIGIN}/other`, otherHtml),
+      ])
+    );
+    const mismatch = byRule(findings, 'ARCH-canonical-mismatch');
+    expect(mismatch).toHaveLength(1);
+    expect(mismatch[0]!.evidence.url).toBe(`${ORIGIN}/page`);
+  });
+
+  it('canonical sur la page elle-même - 0 finding', () => {
+    const pageHtml = `<html><head><link rel="canonical" href="${ORIGIN}/page"></head><body><h1>Page</h1></body></html>`;
+    const findings = detectArchitecture(
+      crawl([page(`${ORIGIN}/`, homeHtml), page(`${ORIGIN}/page`, pageHtml)])
+    );
+    expect(byRule(findings, 'ARCH-canonical-mismatch')).toHaveLength(0);
+    expect(byRule(findings, 'ARCH-canonical-target-invalid')).toHaveLength(0);
+  });
+
+  it('canonical vers une page 404 crawlée - ARCH-canonical-target-invalid', () => {
+    const pageHtml = `<html><head><link rel="canonical" href="${ORIGIN}/broken"></head><body><h1>Page</h1></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        page(`${ORIGIN}/page`, pageHtml),
+        page(`${ORIGIN}/broken`, '', 404),
+      ])
+    );
+    const invalid = byRule(findings, 'ARCH-canonical-target-invalid');
+    expect(invalid).toHaveLength(1);
+    expect(invalid[0]!.evidence.targetStatus).toBe(404);
+    // la cible cassée prime : pas de mismatch en double
+    expect(byRule(findings, 'ARCH-canonical-mismatch')).toHaveLength(0);
+  });
+
+  it('canonical vers une page noindex crawlée - ARCH-canonical-target-invalid', () => {
+    const pageHtml = `<html><head><link rel="canonical" href="${ORIGIN}/hidden"></head><body><h1>Page</h1></body></html>`;
+    const hiddenHtml = `<html><head><meta name="robots" content="noindex"></head><body><h1>Hidden</h1></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        page(`${ORIGIN}/page`, pageHtml),
+        page(`${ORIGIN}/hidden`, hiddenHtml),
+      ])
+    );
+    expect(byRule(findings, 'ARCH-canonical-target-invalid')).toHaveLength(1);
+  });
+
+  it('canonical vers une URL non crawlée - 0 finding (précision)', () => {
+    const pageHtml = `<html><head><link rel="canonical" href="${ORIGIN}/never-crawled"></head><body><h1>Page</h1></body></html>`;
+    const findings = detectArchitecture(
+      crawl([page(`${ORIGIN}/`, homeHtml), page(`${ORIGIN}/page`, pageHtml)])
+    );
+    expect(byRule(findings, 'ARCH-canonical-target-invalid')).toHaveLength(0);
+    // mismatch émis : la canonical ≠ la page, cible hors périmètre
+    expect(byRule(findings, 'ARCH-canonical-mismatch')).toHaveLength(1);
+  });
+});
+
+describe('detectors/architecture · ARCH-duplicate-*', () => {
+  const homeHtml = `<html><body><h1>Home</h1></body></html>`;
+
+  it('deux pages avec le même title - ARCH-duplicate-title', () => {
+    const htmlA = `<html><head><title>Page identique</title></head><body><h1>A</h1></body></html>`;
+    const htmlB = `<html><head><title>Page identique</title></head><body><h1>B</h1></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        page(`${ORIGIN}/a`, htmlA),
+        page(`${ORIGIN}/b`, htmlB),
+      ])
+    );
+    const dup = byRule(findings, 'ARCH-duplicate-title');
+    expect(dup).toHaveLength(1);
+    expect(dup[0]!.evidence.count).toBe(2);
+    expect(String(dup[0]!.evidence.urls)).toContain(`${ORIGIN}/a`);
+    expect(String(dup[0]!.evidence.urls)).toContain(`${ORIGIN}/b`);
+  });
+
+  it('deux pages avec la même meta description - ARCH-duplicate-description', () => {
+    const meta = `<meta name="description" content="Description partagée entre deux pages">`;
+    const htmlA = `<html><head><title>Titre A</title>${meta}</head><body><h1>A</h1></body></html>`;
+    const htmlB = `<html><head><title>Titre B</title>${meta}</head><body><h1>B</h1></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        page(`${ORIGIN}/a`, htmlA),
+        page(`${ORIGIN}/b`, htmlB),
+      ])
+    );
+    expect(byRule(findings, 'ARCH-duplicate-description')).toHaveLength(1);
+    expect(byRule(findings, 'ARCH-duplicate-title')).toHaveLength(0);
+  });
+
+  it('titles différents - 0 finding', () => {
+    const htmlA = `<html><head><title>Titre A</title></head><body><h1>A</h1></body></html>`;
+    const htmlB = `<html><head><title>Titre B</title></head><body><h1>B</h1></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        page(`${ORIGIN}/a`, htmlA),
+        page(`${ORIGIN}/b`, htmlB),
+      ])
+    );
+    expect(byRule(findings, 'ARCH-duplicate-title')).toHaveLength(0);
+  });
+
+  it('page noindex avec title identique - exclue du doublon', () => {
+    const htmlA = `<html><head><title>Page identique</title></head><body><h1>A</h1></body></html>`;
+    const htmlB = `<html><head><title>Page identique</title><meta name="robots" content="noindex"></head><body><h1>B</h1></body></html>`;
+    const findings = detectArchitecture(
+      crawl([
+        page(`${ORIGIN}/`, homeHtml),
+        page(`${ORIGIN}/a`, htmlA),
+        page(`${ORIGIN}/b`, htmlB),
+      ])
+    );
+    expect(byRule(findings, 'ARCH-duplicate-title')).toHaveLength(0);
   });
 });
