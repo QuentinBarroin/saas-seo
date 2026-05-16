@@ -1,6 +1,7 @@
 import type { BacklogPageData } from './get-page-data';
 import { toCsv } from './csv';
 import { buildBacklogItemBody } from './item-body';
+import { groupByPullRequest, prLabelByItemId } from './group-by-pr';
 
 const LINEAR_HEADERS = [
   'Title',
@@ -39,13 +40,14 @@ const EFFORT_TO_ESTIMATE: Record<'XS' | 'S' | 'M' | 'L' | 'XL', string> = {
  * cellule (échappée par `toCsv`).
  */
 export function exportBacklogLinear(data: BacklogPageData): string {
+  const prLabels = prLabelByItemId(groupByPullRequest(data.items));
   const rows = data.items.map((item) => [
     item.title,
     buildBacklogItemBody(item),
     PRIORITY_TO_LINEAR[item.priority],
     STATUS_TO_LINEAR[item.status] ?? 'Todo',
     EFFORT_TO_ESTIMATE[item.effort],
-    ['SEO', item.category].join(','),
+    ['SEO', item.category, prLabels.get(item.id) ?? 'PR non groupée'].join(','),
   ]);
   return toCsv(LINEAR_HEADERS, rows);
 }

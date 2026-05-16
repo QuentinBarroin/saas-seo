@@ -22,7 +22,7 @@ describe('exportBacklogMarkdown', () => {
     expect(result).toContain('Aucune tâche dans ce backlog.');
   });
 
-  it('generates markdown with P0, P1, P2 sections ordered', () => {
+  it('organise le backlog en sections PR ordonnées par priorité', () => {
     const data: BacklogPageData = {
       project: { id: 'p1', name: 'Project', domain: 'example.com' },
       items: [
@@ -82,19 +82,20 @@ describe('exportBacklogMarkdown', () => {
 
     const result = exportBacklogMarkdown(data);
 
-    expect(result).toContain('## P0 — Critique');
-    expect(result).toContain('## P1 — Important');
-    expect(result).toContain('## P2 — Amélioration');
+    // 3 catégories distinctes sans fichier ciblé → 3 PR, ordonnées P0 → P2.
+    expect(result).toContain('## PR 1 — catégorie technical');
+    expect(result).toContain('## PR 2 — catégorie architecture');
+    expect(result).toContain('## PR 3 — catégorie content');
 
-    const p0Index = result.indexOf('## P0 — Critique');
-    const p1Index = result.indexOf('## P1 — Important');
-    const p2Index = result.indexOf('## P2 — Amélioration');
+    const pr1 = result.indexOf('## PR 1');
+    const pr2 = result.indexOf('## PR 2');
+    const pr3 = result.indexOf('## PR 3');
 
-    expect(p0Index).toBeLessThan(p1Index);
-    expect(p1Index).toBeLessThan(p2Index);
+    expect(pr1).toBeLessThan(pr2);
+    expect(pr2).toBeLessThan(pr3);
   });
 
-  it('skips empty sections', () => {
+  it('ne crée pas de section PR vide', () => {
     const data: BacklogPageData = {
       project: { id: 'p1', name: 'Project', domain: 'example.com' },
       items: [
@@ -124,9 +125,8 @@ describe('exportBacklogMarkdown', () => {
 
     const result = exportBacklogMarkdown(data);
 
-    expect(result).not.toContain('## P0 — Critique');
-    expect(result).toContain('## P1 — Important');
-    expect(result).not.toContain('## P2 — Amélioration');
+    expect(result).toContain('## PR 1');
+    expect(result).not.toContain('## PR 2');
   });
 
   it('includes all optional fields when present', () => {

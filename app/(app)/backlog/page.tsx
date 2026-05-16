@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getBacklogPageData } from '@/lib/backlog/get-page-data';
+import { groupByPullRequest } from '@/lib/backlog/group-by-pr';
 import {
   NvPageHeader,
   NvButton,
@@ -247,7 +248,7 @@ export default async function BacklogPage({ searchParams }: PageProps) {
           )}
         </div>
 
-        <BacklogDetailPanel items={data.items} />
+        <BacklogDetailPanel groups={groupByPullRequest(data.items)} />
       </div>
     </div>
   );

@@ -103,8 +103,13 @@ describe('exportBacklogCsv', () => {
 
   it('produces an empty body (header only) for an empty backlog', () => {
     expect(exportBacklogCsv(makeData([]))).toBe(
-      'id,title,priority,effort,category,status,sourceRule,sourceFindingTitle,description,filePathsTargeted,acceptanceCriteria,testsExpected,definitionOfDone,claudePrompt'
+      'id,title,priority,effort,category,status,prGroup,sourceRule,sourceFindingTitle,description,filePathsTargeted,acceptanceCriteria,testsExpected,definitionOfDone,claudePrompt'
     );
+  });
+
+  it('renseigne la colonne prGroup (L1-18)', () => {
+    const csv = exportBacklogCsv(makeData([makeItem()]));
+    expect(csv.split('\r\n')[1]).toContain('PR 1');
   });
 });
 
@@ -119,6 +124,7 @@ describe('exportBacklogGithub', () => {
       'priority:P0',
       'effort:M',
       'seo:technical',
+      'PR 1 — app',
     ]);
     expect(issue.body).toContain('TECH-missing-title');
     expect(issue.body).toContain("**Critères d'acceptation**");
@@ -161,6 +167,6 @@ describe('exportBacklogLinear', () => {
 
   it('joins labels with a comma inside a quoted cell', () => {
     const csv = exportBacklogLinear(makeData([makeItem()]));
-    expect(csv).toContain('"SEO,technical"');
+    expect(csv).toContain('"SEO,technical,PR 1 — app"');
   });
 });

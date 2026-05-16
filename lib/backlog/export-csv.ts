@@ -1,5 +1,6 @@
 import type { BacklogPageData } from './get-page-data';
 import { toCsv } from './csv';
+import { groupByPullRequest, prLabelByItemId } from './group-by-pr';
 
 const CSV_HEADERS = [
   'id',
@@ -8,6 +9,7 @@ const CSV_HEADERS = [
   'effort',
   'category',
   'status',
+  'prGroup',
   'sourceRule',
   'sourceFindingTitle',
   'description',
@@ -20,10 +22,11 @@ const CSV_HEADERS = [
 
 /**
  * Export CSV générique (tableur) : une ligne par tâche, tous les champs.
- * Les champs multi-valeurs (fichiers, critères, tests) sont aplatis avec
- * un séparateur ` | ` pour rester lisibles dans une seule cellule.
+ * La colonne `prGroup` porte le regroupement par PR logique (L1-18). Les
+ * champs multi-valeurs (fichiers, critères, tests) sont aplatis avec ` | `.
  */
 export function exportBacklogCsv(data: BacklogPageData): string {
+  const prLabels = prLabelByItemId(groupByPullRequest(data.items));
   const rows = data.items.map((item) => [
     item.id,
     item.title,
@@ -31,6 +34,7 @@ export function exportBacklogCsv(data: BacklogPageData): string {
     item.effort,
     item.category,
     item.status,
+    prLabels.get(item.id) ?? '',
     item.sourceFinding?.rule ?? '',
     item.sourceFinding?.title ?? '',
     item.description,

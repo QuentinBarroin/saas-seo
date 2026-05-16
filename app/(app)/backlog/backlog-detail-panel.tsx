@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import type { BacklogItemShape } from '@/lib/backlog/get-page-data';
+import { Fragment, useState } from 'react';
+import type { BacklogPrGroup } from '@/lib/backlog/group-by-pr';
 import { NvButton, NvCard, NvStatusBadge } from '@/components/nv';
 
 type Props = {
-  items: BacklogItemShape[];
+  groups: BacklogPrGroup[];
 };
 
 function PriorityBadge({ priority }: { priority: 'P0' | 'P1' | 'P2' }) {
@@ -32,7 +32,8 @@ function EffortBadge({ effort }: { effort: string }) {
   );
 }
 
-export function BacklogDetailPanel({ items }: Props) {
+export function BacklogDetailPanel({ groups }: Props) {
+  const items = groups.flatMap((group) => group.items);
   const [selectedId, setSelectedId] = useState<string | null>(
     items.length > 0 && items[0] ? items[0].id : null
   );
@@ -61,27 +62,39 @@ export function BacklogDetailPanel({ items }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
-                  <tr
-                    key={item.id}
-                    className={`cursor-pointer border-b border-gray-100 hover:bg-gray-50 ${
-                      selectedId === item.id ? 'bg-blue-50' : ''
-                    }`}
-                    onClick={() => setSelectedId(item.id)}
-                  >
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{item.title}</div>
-                      <div className="text-xs text-gray-500">
-                        {item.category}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <PriorityBadge priority={item.priority} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <EffortBadge effort={item.effort} />
-                    </td>
-                  </tr>
+                {groups.map((group) => (
+                  <Fragment key={group.id}>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <td
+                        colSpan={3}
+                        className="px-3 py-2 text-xs font-semibold text-gray-600"
+                      >
+                        {group.label} · {group.items.length} tâche(s)
+                      </td>
+                    </tr>
+                    {group.items.map((item) => (
+                      <tr
+                        key={item.id}
+                        className={`cursor-pointer border-b border-gray-100 hover:bg-gray-50 ${
+                          selectedId === item.id ? 'bg-blue-50' : ''
+                        }`}
+                        onClick={() => setSelectedId(item.id)}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="font-medium">{item.title}</div>
+                          <div className="text-xs text-gray-500">
+                            {item.category}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <PriorityBadge priority={item.priority} />
+                        </td>
+                        <td className="px-3 py-2">
+                          <EffortBadge effort={item.effort} />
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
